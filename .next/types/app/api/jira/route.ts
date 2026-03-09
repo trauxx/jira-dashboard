@@ -1,4 +1,4 @@
-// File: /Users/leocastro/Documents/Development/Traux/jira-dashboard/src/app/api/jira/route.ts
+// File: /workspaces/jira-dashboard/src/app/api/jira/route.ts
 import * as entry from '../../../../../src/app/api/jira/route.js'
 import type { NextRequest } from 'next/server.js'
 
