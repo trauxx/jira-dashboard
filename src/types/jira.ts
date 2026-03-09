@@ -3,6 +3,7 @@ export interface JiraIssue {
   key: string;
   summary: string;
   status: string;
+  created?: string;
   assignee?: string;
   avatarUrl?: string;
   priority?: string;
@@ -16,7 +17,7 @@ export interface JiraConfig {
   boardId: string;
 }
 
-export type ColumnStatus = 'planned' | 'todo' | 'inprogress' | 'done';
+export type ColumnStatus = "planned" | "todo" | "inprogress" | "done";
 
 export interface BoardColumn {
   id: ColumnStatus;

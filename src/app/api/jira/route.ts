@@ -50,6 +50,7 @@ export async function POST(req: Request) {
     const activeSprint = sprintData.values?.[0];
 
     let sprintName = activeSprint?.name ?? "Sem sprint ativa";
+    const sprintStartDate = activeSprint?.startDate ?? null;
     let jql: string | null = activeSprint ? `sprint=${activeSprint.id}` : null;
 
     if (!jql) {
@@ -75,16 +76,27 @@ export async function POST(req: Request) {
       }
     }
 
-    const issuesRes = await fetch(
-      `${baseUrl}/rest/api/3/search?jql=${encodeURIComponent(jql)}&maxResults=100&fields=summary,status,assignee,priority,issuetype`,
-      {
-        headers: {
-          Authorization: authHeader,
-          Accept: "application/json",
-        },
-        cache: "no-store",
+    const issuesRes = await fetch(`${baseUrl}/rest/api/3/search/jql`, {
+      method: "POST",
+      headers: {
+        Authorization: authHeader,
+        Accept: "application/json",
+        "Content-Type": "application/json",
       },
-    );
+      cache: "no-store",
+      body: JSON.stringify({
+        jql,
+        maxResults: 100,
+        fields: [
+          "summary",
+          "status",
+          "assignee",
+          "priority",
+          "issuetype",
+          "created",
+        ],
+      }),
+    });
 
     if (!issuesRes.ok) {
       const issuesData = await issuesRes.json();
@@ -103,13 +115,14 @@ export async function POST(req: Request) {
         key: issue.key,
         summary: issue.fields.summary,
         status: issue.fields.status.name,
+        created: issue.fields.created,
         assignee: issue.fields.assignee?.displayName,
         avatarUrl: issue.fields.assignee?.avatarUrls?.["24x24"],
         priority: issue.fields.priority?.name,
         issueType: issue.fields.issuetype?.name,
       })) ?? [];
 
-    return NextResponse.json({ sprintName, issues });
+    return NextResponse.json({ sprintName, sprintStartDate, issues });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Erro inesperado";
     return NextResponse.json({ error: message }, { status: 500 });

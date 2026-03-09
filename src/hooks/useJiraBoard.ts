@@ -28,21 +28,35 @@ export function clearConfig() {
 // Map Jira status names to our columns
 function mapStatusToColumn(statusName: string): string {
   const lower = statusName.toLowerCase();
+
   if (
     lower.includes("done") ||
     lower.includes("conclu") ||
     lower.includes("fechad") ||
     lower.includes("resolved") ||
     lower.includes("closed")
-  )
+  ) {
     return "done";
+  }
+
   if (
     lower.includes("progress") ||
     lower.includes("andamento") ||
     lower.includes("in progress") ||
-    lower.includes("desenvolvimento")
-  )
+    lower.includes("desenvolvimento") ||
+    lower.includes("revis") || // revisão PR/testes
+    lower.includes("pr/test") ||
+    lower.includes("validacao") ||
+    lower.includes("validação") ||
+    lower.includes("prod") ||
+    lower.includes("entrave") ||
+    lower.includes("imped") ||
+    lower.includes("paraliz") ||
+    lower.includes("paralis")
+  ) {
     return "inprogress";
+  }
+
   if (
     lower.includes("to do") ||
     lower.includes("a fazer") ||
@@ -50,15 +64,19 @@ function mapStatusToColumn(statusName: string): string {
     lower.includes("aberto") ||
     lower.includes("open") ||
     lower.includes("backlog")
-  )
+  ) {
     return "todo";
+  }
+
   if (
     lower.includes("planej") ||
     lower.includes("planned") ||
     lower.includes("new") ||
     lower.includes("novo")
-  )
+  ) {
     return "planned";
+  }
+
   return "todo";
 }
 
@@ -91,10 +109,16 @@ export function useJiraBoard() {
         throw new Error(apiError || `Erro ao consultar o Jira (${res.status})`);
       }
 
-      const data: { sprintName?: string; issues: JiraIssue[] } =
-        await res.json();
+      const data: {
+        sprintName?: string;
+        sprintStartDate?: string | null;
+        issues: JiraIssue[];
+      } = await res.json();
 
       setSprintName(data.sprintName || "Sem sprint ativa");
+      const sprintStart = data.sprintStartDate
+        ? new Date(data.sprintStartDate)
+        : null;
       const issues = data.issues;
 
       // Distribute into columns
@@ -106,9 +130,17 @@ export function useJiraBoard() {
       ];
 
       issues.forEach((issue) => {
-        const col = mapStatusToColumn(issue.status);
-        const column = newColumns.find((c) => c.id === col);
-        if (column) column.issues.push(issue);
+        const statusColumnId = mapStatusToColumn(issue.status);
+        const statusColumn = newColumns.find((c) => c.id === statusColumnId);
+        if (statusColumn) statusColumn.issues.push(issue);
+
+        if (sprintStart && issue.created) {
+          const created = new Date(issue.created);
+          if (!Number.isNaN(created.getTime()) && created <= sprintStart) {
+            const plannedColumn = newColumns.find((c) => c.id === "planned");
+            if (plannedColumn) plannedColumn.issues.push(issue);
+          }
+        }
       });
 
       setColumns(newColumns);
