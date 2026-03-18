@@ -120,6 +120,7 @@ export async function POST(req: Request) {
           "priority",
           "issuetype",
           "created",
+          "labels",
           "customfield_10016",
           "customfield_10026",
         ],
@@ -149,6 +150,7 @@ export async function POST(req: Request) {
         priority: issue.fields.priority?.name,
         issueType: issue.fields.issuetype?.name,
         browseUrl: `${baseUrl}/browse/${issue.key}`,
+        labels: issue.fields.labels ?? [],
         storyPoints:
           issue.fields.customfield_10016 ?? // padrão cloud
           issue.fields.customfield_10026 ?? // alternativo comum

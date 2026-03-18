@@ -10,6 +10,7 @@ export interface JiraIssue {
   priority?: string;
   issueType?: string;
   browseUrl?: string;
+  labels?: string[];
 }
 
 export interface JiraConfig {

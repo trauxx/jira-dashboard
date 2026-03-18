@@ -31,6 +31,9 @@ export default function SprintBoard({ config, onLogout }: Props) {
     fetchBoard,
   } = useJiraBoard();
   const [clock, setClock] = useState(new Date());
+  const [companyFilter, setCompanyFilter] = useState<"all" | "ISA" | "MB">(
+    "all",
+  );
 
   useEffect(() => {
     fetchBoard(config);
@@ -63,6 +66,17 @@ export default function SprintBoard({ config, onLogout }: Props) {
     minute: "2-digit",
   });
 
+  const filteredColumns = useMemo(() => {
+    if (companyFilter === "all") return columns;
+    const target = companyFilter.toUpperCase();
+    return columns.map((col) => ({
+      ...col,
+      issues: col.issues.filter((issue) =>
+        (issue.labels ?? []).some((label) => label.toUpperCase() === target),
+      ),
+    }));
+  }, [columns, companyFilter]);
+
   const {
     totalIssues,
     todoCount,
@@ -78,7 +92,7 @@ export default function SprintBoard({ config, onLogout }: Props) {
     let inprog = 0;
     let done = 0;
 
-    columns
+    filteredColumns
       .filter(
         (c) => c.id === "todo" || c.id === "inprogress" || c.id === "done",
       )
@@ -104,7 +118,7 @@ export default function SprintBoard({ config, onLogout }: Props) {
       percInProgress: Math.round((inprog / denom) * 100),
       percDone: Math.round((done / denom) * 100),
     };
-  }, [columns]);
+  }, [filteredColumns]);
 
   const sprintDaysLeft = useMemo(() => {
     if (!sprintEndDate) return null;
@@ -152,6 +166,22 @@ export default function SprintBoard({ config, onLogout }: Props) {
           <span className="text-xs text-muted-foreground uppercase text-right">
             {dateStr} — {timeStr}
           </span>
+          <Select
+            value={companyFilter}
+            onValueChange={(value) =>
+              setCompanyFilter(value as "all" | "ISA" | "MB")
+            }
+            disabled={loading}
+          >
+            <SelectTrigger className="w-32">
+              <SelectValue placeholder="Empresa" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas</SelectItem>
+              <SelectItem value="ISA">ISA</SelectItem>
+              <SelectItem value="MB">MB</SelectItem>
+            </SelectContent>
+          </Select>
           <Button
             variant="ghost"
             size="icon"
@@ -238,7 +268,7 @@ export default function SprintBoard({ config, onLogout }: Props) {
 
       {/* Board */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 flex-1">
-        {columns.map((col) => (
+        {filteredColumns.map((col) => (
           <BoardColumnComponent key={col.id} column={col} />
         ))}
       </div>
