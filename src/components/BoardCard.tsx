@@ -15,7 +15,6 @@ interface Props {
 
 export default function BoardCard({ issue, columnId }: Props) {
   const isDone = columnId === "done";
-  const hasStoryPoints = typeof issue.storyPoints === "number";
 
   return (
     <div
@@ -35,11 +34,6 @@ export default function BoardCard({ issue, columnId }: Props) {
           {issue.summary}
         </span>
       </div>
-      {hasStoryPoints && (
-        <span className="shrink-0 self-start rounded-full bg-black/20 px-2 py-[2px] text-[11px] font-semibold">
-          {issue.storyPoints}
-        </span>
-      )}
       {isDone && (
         <CheckCircle2 className="h-4 w-4 shrink-0 self-start opacity-80" />
       )}
