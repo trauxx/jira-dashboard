@@ -13,6 +13,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+} from "@/components/ui/chart";
+import { Pie, PieChart, Cell } from "recharts";
+
+const TOTAL_CAPACITY_HOURS = 300;
 
 interface Props {
   config: JiraConfig;
@@ -53,6 +61,11 @@ export default function SprintBoard({ config, onLogout }: Props) {
     const numericSprintId = Number(value);
     if (Number.isNaN(numericSprintId)) return;
     fetchBoard(config, numericSprintId);
+  };
+
+  const storyPointsToHours = (points?: number | null) => {
+    if (typeof points !== "number") return 0;
+    return points * 3;
   };
 
   const dateStr = clock.toLocaleDateString("pt-BR", {
@@ -129,10 +142,40 @@ export default function SprintBoard({ config, onLogout }: Props) {
     return Math.ceil(diffMs / (1000 * 60 * 60 * 24));
   }, [sprintEndDate]);
 
+  const capacityChartConfig = {
+    completed: { label: "Concluído", color: "#22c55e" },
+    remaining: { label: "Restante", color: "#e5e7eb" },
+  } as const;
+
+  const { completedHours, remainingHours, capacityPercentage, capacityData } =
+    useMemo(() => {
+      const doneColumn = filteredColumns.find((col) => col.id === "done");
+      const completedHours = (doneColumn?.issues || []).reduce(
+        (total, issue) => total + storyPointsToHours(issue.storyPoints),
+        0,
+      );
+
+      const remainingHours = Math.max(TOTAL_CAPACITY_HOURS - completedHours, 0);
+      const capacityPercentage = Math.min(
+        100,
+        Math.round((completedHours / TOTAL_CAPACITY_HOURS) * 100),
+      );
+
+      return {
+        completedHours,
+        remainingHours,
+        capacityPercentage,
+        capacityData: [
+          { name: "completed", label: "Concluído", value: completedHours },
+          { name: "remaining", label: "Restante", value: remainingHours },
+        ],
+      };
+    }, [filteredColumns]);
+
   return (
     <div className="min-h-screen bg-background p-6 flex flex-col gap-5">
       {/* Header */}
-      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
         <div className="flex flex-col gap-2">
           <h1
             className="text-xl font-bold text-primary tracking-tight uppercase"
@@ -162,47 +205,90 @@ export default function SprintBoard({ config, onLogout }: Props) {
             </Select>
           </div>
         </div>
-        <div className="flex items-center gap-3">
-          <span className="text-xs text-muted-foreground uppercase text-right">
-            {dateStr} — {timeStr}
-          </span>
-          <Select
-            value={companyFilter}
-            onValueChange={(value) =>
-              setCompanyFilter(value as "all" | "ISA" | "MB")
-            }
-            disabled={loading}
-          >
-            <SelectTrigger className="w-32">
-              <SelectValue placeholder="Empresa" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todas</SelectItem>
-              <SelectItem value="ISA">ISA</SelectItem>
-              <SelectItem value="MB">MB</SelectItem>
-            </SelectContent>
-          </Select>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => fetchBoard(config, selectedSprintId)}
-            disabled={loading}
-            className="text-muted-foreground hover:text-foreground"
-          >
-            {loading ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <RefreshCw className="h-4 w-4" />
-            )}
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={handleLogout}
-            className="text-muted-foreground hover:text-destructive"
-          >
-            <LogOut className="h-4 w-4" />
-          </Button>
+        <div className="flex flex-col gap-3 md:flex-row md:items-start md:gap-4 md:ml-auto md:justify-end w-full md:w-auto">
+          <div className="flex items-center gap-3 justify-end">
+            <span className="text-xs text-muted-foreground uppercase text-right">
+              {dateStr} — {timeStr}
+            </span>
+            <Select
+              value={companyFilter}
+              onValueChange={(value) =>
+                setCompanyFilter(value as "all" | "ISA" | "MB")
+              }
+              disabled={loading}
+            >
+              <SelectTrigger className="w-32">
+                <SelectValue placeholder="Empresa" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas</SelectItem>
+                <SelectItem value="ISA">ISA</SelectItem>
+                <SelectItem value="MB">MB</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => fetchBoard(config, selectedSprintId)}
+              disabled={loading}
+              className="text-muted-foreground hover:text-foreground"
+            >
+              {loading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <RefreshCw className="h-4 w-4" />
+              )}
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handleLogout}
+              className="text-muted-foreground hover:text-destructive"
+            >
+              <LogOut className="h-4 w-4" />
+            </Button>
+          </div>
+          <div className="w-full md:w-64 self-end bg-card border rounded-lg p-3 shadow-sm">
+            <div className="flex items-center justify-between text-xs text-muted-foreground">
+              <span>Capacidade da sprint</span>
+              <span>{capacityPercentage}%</span>
+            </div>
+            <div className="relative h-36 mt-2">
+              <ChartContainer
+                config={capacityChartConfig}
+                className="h-full w-full aspect-auto"
+              >
+                <PieChart>
+                  <Pie
+                    data={capacityData}
+                    dataKey="value"
+                    nameKey="label"
+                    innerRadius={45}
+                    outerRadius={70}
+                    paddingAngle={2}
+                    strokeWidth={0}
+                  >
+                    {capacityData.map((entry) => (
+                      <Cell
+                        key={entry.name}
+                        fill={`var(--color-${entry.name})`}
+                      />
+                    ))}
+                  </Pie>
+                  <ChartTooltip content={<ChartTooltipContent hideLabel />} />
+                </PieChart>
+              </ChartContainer>
+              <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+                <span className="text-2xl font-bold text-foreground">
+                  {capacityPercentage}%
+                </span>
+                <span className="text-[11px] text-muted-foreground">
+                  {Math.min(completedHours, TOTAL_CAPACITY_HOURS)}h de{" "}
+                  {TOTAL_CAPACITY_HOURS}h
+                </span>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
