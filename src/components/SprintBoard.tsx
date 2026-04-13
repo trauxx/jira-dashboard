@@ -20,7 +20,10 @@ import {
 } from "@/components/ui/chart";
 import { Pie, PieChart, Cell } from "recharts";
 
-const TOTAL_CAPACITY_HOURS = 390;
+const CAPACITY_BY_COMPANY = {
+  MB: 227,
+  ISA: 163,
+} as const;
 
 interface Props {
   config: JiraConfig;
@@ -42,6 +45,13 @@ export default function SprintBoard({ config, onLogout }: Props) {
   const [companyFilter, setCompanyFilter] = useState<"all" | "ISA" | "MB">(
     "all",
   );
+
+  const totalCapacityHours = useMemo(() => {
+    if (companyFilter === "all") {
+      return CAPACITY_BY_COMPANY.MB + CAPACITY_BY_COMPANY.ISA;
+    }
+    return CAPACITY_BY_COMPANY[companyFilter];
+  }, [companyFilter]);
 
   useEffect(() => {
     fetchBoard(config);
@@ -155,10 +165,10 @@ export default function SprintBoard({ config, onLogout }: Props) {
         0,
       );
 
-      const remainingHours = Math.max(TOTAL_CAPACITY_HOURS - completedHours, 0);
+      const remainingHours = Math.max(totalCapacityHours - completedHours, 0);
       const capacityPercentage = Math.min(
         100,
-        Math.round((completedHours / TOTAL_CAPACITY_HOURS) * 100),
+        Math.round((completedHours / totalCapacityHours) * 100),
       );
 
       return {
@@ -170,7 +180,7 @@ export default function SprintBoard({ config, onLogout }: Props) {
           { name: "remaining", label: "Restante", value: remainingHours },
         ],
       };
-    }, [filteredColumns]);
+    }, [filteredColumns, totalCapacityHours]);
 
   return (
     <div className="min-h-screen bg-background p-6 flex flex-col gap-5">
@@ -283,8 +293,8 @@ export default function SprintBoard({ config, onLogout }: Props) {
                   {capacityPercentage}%
                 </span>
                 <span className="text-[11px] text-muted-foreground">
-                  {Math.min(completedHours, TOTAL_CAPACITY_HOURS)}h de{" "}
-                  {TOTAL_CAPACITY_HOURS}h
+                  {Math.min(completedHours, totalCapacityHours)}h de{" "}
+                  {totalCapacityHours}h
                 </span>
               </div>
             </div>
