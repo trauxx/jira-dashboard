@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/chart";
 import { Pie, PieChart, Cell } from "recharts";
 
-const TOTAL_CAPACITY_HOURS = 300;
+const TOTAL_CAPACITY_HOURS = 390;
 
 interface Props {
   config: JiraConfig;
@@ -65,7 +65,7 @@ export default function SprintBoard({ config, onLogout }: Props) {
 
   const storyPointsToHours = (points?: number | null) => {
     if (typeof points !== "number") return 0;
-    return points * 3;
+    return points * 4;
   };
 
   const dateStr = clock.toLocaleDateString("pt-BR", {
