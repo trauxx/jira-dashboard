@@ -1,5 +1,6 @@
 import { JiraIssue, ColumnStatus } from "@/types/jira";
 import { CheckCircle2, AlertTriangle } from "lucide-react";
+import StoryPoints from "./StoryPoints";
 
 const statusColorMap: Record<ColumnStatus, string> = {
   planned: "bg-col-planned",
@@ -35,14 +36,19 @@ export default function BoardCard({ issue, columnId }: Props) {
           {issue.summary}
         </span>
       </div>
-      <div className="flex items-center gap-1 self-start">
-        {isLate && (
-          <AlertTriangle
-            className="h-4 w-4 shrink-0 text-amber-400"
-            aria-label="Entrou após o planejamento"
-          />
+      <div className="flex flex-col items-end gap-1 self-start">
+        {typeof issue.storyPoints === "number" && (
+          <StoryPoints points={issue.storyPoints} />
         )}
-        {isDone && <CheckCircle2 className="h-4 w-4 shrink-0 opacity-80" />}
+        <div className="flex items-center gap-1">
+          {isLate && (
+            <AlertTriangle
+              className="h-4 w-4 shrink-0 text-amber-400"
+              aria-label="Entrou após o planejamento"
+            />
+          )}
+          {isDone && <CheckCircle2 className="h-4 w-4 shrink-0 opacity-80" />}
+        </div>
       </div>
     </div>
   );
