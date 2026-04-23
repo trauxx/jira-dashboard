@@ -168,10 +168,11 @@ export default function SprintBoard({ config, onLogout, company }: Props) {
 
   const capacityChartConfig = {
     completed: { label: "Concluído", color: "#22c55e" },
+    exceeding: { label: "Excedente", color: "#f97316" },
     remaining: { label: "Restante", color: "#e5e7eb" },
   } as const;
 
-  const { completedHours, remainingHours, capacityPercentage, capacityData } =
+  const { completedHours, remainingHours, capacityPercentage, capacityData, isExceeding } =
     useMemo(() => {
       const doneColumn = filteredColumns.find((col) => col.id === "done");
       const completedHours = (doneColumn?.issues || []).reduce(
@@ -179,20 +180,26 @@ export default function SprintBoard({ config, onLogout, company }: Props) {
         0,
       );
 
-      const remainingHours = Math.max(totalCapacityHours - completedHours, 0);
-      const capacityPercentage = Math.min(
-        100,
-        Math.round((completedHours / totalCapacityHours) * 100),
+      const isExceeding = completedHours > totalCapacityHours;
+      const remainingHours = isExceeding ? 0 : totalCapacityHours - completedHours;
+      const capacityPercentage = Math.round(
+        (completedHours / totalCapacityHours) * 100,
       );
 
       return {
         completedHours,
         remainingHours,
         capacityPercentage,
-        capacityData: [
-          { name: "completed", label: "Concluído", value: completedHours },
-          { name: "remaining", label: "Restante", value: remainingHours },
-        ],
+        isExceeding,
+        capacityData: isExceeding
+          ? [
+              { name: "completed", label: "Concluído", value: totalCapacityHours },
+              { name: "exceeding", label: "Excedente", value: completedHours - totalCapacityHours },
+            ]
+          : [
+              { name: "completed", label: "Concluído", value: completedHours },
+              { name: "remaining", label: "Restante", value: remainingHours },
+            ],
       };
     }, [filteredColumns, totalCapacityHours]);
 
@@ -277,7 +284,9 @@ export default function SprintBoard({ config, onLogout, company }: Props) {
           <div className="w-full md:w-64 self-end bg-card border rounded-lg p-3 shadow-sm">
             <div className="flex items-center justify-between text-xs text-muted-foreground">
               <span>Capacidade da sprint</span>
-              <span>{capacityPercentage}%</span>
+              <span className={isExceeding ? "text-orange-500" : ""}>
+                {capacityPercentage}%
+              </span>
             </div>
             <div className="relative h-36 mt-2">
               <ChartContainer
@@ -297,7 +306,11 @@ export default function SprintBoard({ config, onLogout, company }: Props) {
                     {capacityData.map((entry) => (
                       <Cell
                         key={entry.name}
-                        fill={`var(--color-${entry.name})`}
+                        fill={
+                          entry.name === "exceeding"
+                            ? "#f97316"
+                            : `var(--color-${entry.name})`
+                        }
                       />
                     ))}
                   </Pie>
@@ -308,9 +321,12 @@ export default function SprintBoard({ config, onLogout, company }: Props) {
                 <span className="text-2xl font-bold text-foreground">
                   {capacityPercentage}%
                 </span>
-                <span className="text-[11px] text-muted-foreground">
-                  {Math.min(completedHours, totalCapacityHours)}h de{" "}
-                  {totalCapacityHours}h
+                <span
+                  className={`text-[11px] ${
+                    isExceeding ? "text-orange-500" : "text-muted-foreground"
+                  }`}
+                >
+                  {completedHours}h de {totalCapacityHours}h
                 </span>
               </div>
             </div>
