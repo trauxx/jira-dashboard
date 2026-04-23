@@ -234,6 +234,24 @@ export default function SprintBoard({ config, onLogout, company }: Props) {
             <span className="text-xs text-muted-foreground uppercase text-right">
               {dateStr} — {timeStr}
             </span>
+            {!company && (
+              <Select
+                value={companyFilter}
+                onValueChange={(value) =>
+                  setCompanyFilter(value as "all" | "ISA" | "MB")
+                }
+                disabled={loading}
+              >
+                <SelectTrigger className="w-32">
+                  <SelectValue placeholder="Empresa" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas</SelectItem>
+                  <SelectItem value="ISA">ISA</SelectItem>
+                  <SelectItem value="MB">MB</SelectItem>
+                </SelectContent>
+              </Select>
+            )}
             <Button
               variant="ghost"
               size="icon"
