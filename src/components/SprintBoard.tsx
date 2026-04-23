@@ -58,6 +58,13 @@ export default function SprintBoard({ config, onLogout }: Props) {
   }, [config, fetchBoard]);
 
   useEffect(() => {
+    const interval = setInterval(() => {
+      fetchBoard(config, selectedSprintId);
+    }, 3600000);
+    return () => clearInterval(interval);
+  }, [config, selectedSprintId, fetchBoard]);
+
+  useEffect(() => {
     const t = setInterval(() => setClock(new Date()), 60000);
     return () => clearInterval(t);
   }, []);
