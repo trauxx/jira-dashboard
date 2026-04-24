@@ -56,7 +56,7 @@ export default function SprintBoard({ config, onLogout, company }: Props) {
 
   const totalCapacityHours = useMemo(() => {
     if (companyFilter === "all") {
-      return CAPACITY_BY_COMPANY.MB + CAPACITY_BY_COMPANY.ISA;
+      return CAPACITY_BY_COMPANY.MB + CAPACITY_BY_COMPANY.ISA + CAPACITY_BY_COMPANY.SYSTEM;
     }
     return CAPACITY_BY_COMPANY[companyFilter];
   }, [companyFilter]);
@@ -93,6 +93,13 @@ export default function SprintBoard({ config, onLogout, company }: Props) {
     return points * 4;
   };
 
+  const getCompanyCategories = (labels: string[]) => {
+    const categories = ["ISA", "MB", "SYSTEM"];
+    return categories.filter((cat) =>
+      labels.some((label) => label.toUpperCase() === cat),
+    );
+  };
+
   const dateStr = clock.toLocaleDateString("pt-BR", {
     weekday: "long",
     day: "2-digit",
@@ -109,9 +116,18 @@ export default function SprintBoard({ config, onLogout, company }: Props) {
     const target = companyFilter.toUpperCase();
     return columns.map((col) => ({
       ...col,
-      issues: col.issues.filter((issue) =>
-        (issue.labels ?? []).some((label) => label.toUpperCase() === target),
-      ),
+      issues: col.issues
+        .filter((issue) =>
+          (issue.labels ?? []).some((label) => label.toUpperCase() === target),
+        )
+        .map((issue) => ({
+          ...issue,
+          storyPoints:
+            issue.storyPoints &&
+            getCompanyCategories(issue.labels ?? []).length > 0
+              ? issue.storyPoints / getCompanyCategories(issue.labels ?? []).length
+              : issue.storyPoints,
+        })),
     }));
   }, [columns, companyFilter]);
 
