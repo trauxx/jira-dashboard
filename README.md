@@ -2,17 +2,30 @@
 
 Aplicação Next.js para visualizar quadros e sprints do Jira com React 18, shadcn/ui, Tailwind CSS e TanStack Query.
 
+## Documentação
+
+Consulte a pasta [docs/](docs/) para documentação completa:
+
+- [docs/OVERVIEW.md](docs/OVERVIEW.md) - Visão geral da aplicação
+- [docs/SETUP.md](docs/SETUP.md) - Configuração e instalação
+- [docs/USAGE.md](docs/USAGE.md) - Como usar a interface
+- [docs/JIRA_INTEGRATION.md](docs/JIRA_INTEGRATION.md) - Integração com Jira API
+
 ## Pré-requisitos
 
 - Node.js 18+ e npm (ou pnpm/bun, se preferir)
-- Variáveis de ambiente do Jira configuradas conforme seu `.env.local` (host, email/token, etc.)
+- Conta Atlassian com acesso ao Jira Cloud
 
-## Como rodar
+## Como Rodar Localmente
 
 ```sh
 npm install
 npm run dev
 ```
+
+Acesse http://localhost:3000
+
+Para configurar as variáveis de ambiente do Jira, veja [docs/SETUP.md](docs/SETUP.md).
 
 Build e produção:
 
@@ -20,6 +33,8 @@ Build e produção:
 npm run build
 npm run start
 ```
+
+Consulte [docs/SETUP.md](docs/SETUP.md) para instruções completas de configuração e deploy.
 
 ## Testes e qualidade
 
