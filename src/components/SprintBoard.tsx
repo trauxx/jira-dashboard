@@ -189,6 +189,11 @@ export default function SprintBoard({ config, onLogout, company }: Props) {
     remaining: { label: "Restante", color: "#e5e7eb" },
   } as const;
 
+  // Determine currently selected sprint (fallback to active)
+  const currentSprint = sprints.find((s) => s.id === selectedSprintId) ?? sprints.find((s) => s.state === "active") ?? null;
+  const sprintStartStr = currentSprint && currentSprint.startDate ? new Date(currentSprint.startDate).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }) : null;
+  const sprintEndStr = currentSprint && currentSprint.endDate ? new Date(currentSprint.endDate).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }) : null;
+
   const {
     completedHours,
     remainingHours,
@@ -266,6 +271,15 @@ export default function SprintBoard({ config, onLogout, company }: Props) {
                 ))}
               </SelectContent>
             </Select>
+            {(sprintStartStr || sprintEndStr) && (
+              <span className="text-xs text-muted-foreground ml-2">
+                {sprintStartStr && sprintEndStr
+                  ? `De ${sprintStartStr} a ${sprintEndStr}`
+                  : sprintStartStr
+                  ? `De ${sprintStartStr}`
+                  : `Até ${sprintEndStr}`}
+              </span>
+            )}
           </div>
         </div>
         <div className="flex flex-col gap-3 md:flex-row md:items-start md:gap-4 md:ml-auto md:justify-end w-full md:w-auto">
