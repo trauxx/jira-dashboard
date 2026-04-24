@@ -174,6 +174,21 @@ export default function SprintBoard({ config, onLogout, company }: Props) {
     };
   }, [filteredColumns]);
 
+  const addedAfterCount = useMemo(() => {
+    const seen = new Set<string>();
+    let count = 0;
+    filteredColumns.forEach((col) => {
+      col.issues.forEach((issue) => {
+        if (seen.has(issue.id)) return;
+        seen.add(issue.id);
+        if (issue.addedAfterPlanned) count += 1;
+      });
+    });
+    return count;
+  }, [filteredColumns]);
+
+  const percentAddedOutsidePlan = totalIssues ? Math.round((addedAfterCount / totalIssues) * 100) : 0;
+
   const sprintDaysLeft = useMemo(() => {
     if (!sprintEndDate) return null;
     const end = new Date(sprintEndDate);
@@ -443,9 +458,11 @@ export default function SprintBoard({ config, onLogout, company }: Props) {
 
       {/* Board */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 flex-1">
-        {filteredColumns.map((col) => (
-          <BoardColumnComponent key={col.id} column={col} />
-        ))}
+        {filteredColumns
+          .filter((col) => col.id !== "planned") // hide 'Planejado' column
+          .map((col) => (
+            <BoardColumnComponent key={col.id} column={col} />
+          ))}
       </div>
     </div>
   );
