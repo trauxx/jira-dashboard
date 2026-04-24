@@ -10,6 +10,8 @@ export interface JiraIssue {
   priority?: string;
   issueType?: string;
   browseUrl?: string;
+  self?: string;
+  selfUrl?: string;
   labels?: string[];
   normalizedStatus?: ColumnStatus;
   addedAfterPlanned?: boolean;

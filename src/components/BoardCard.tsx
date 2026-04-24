@@ -1,6 +1,7 @@
 import { JiraIssue, ColumnStatus } from "@/types/jira";
 import { CheckCircle2, AlertTriangle } from "lucide-react";
 import StoryPoints from "./StoryPoints";
+import { getJiraIssueUrl } from "@/utils/jiraUrl";
 
 const statusColorMap: Record<ColumnStatus, string> = {
   planned: "bg-col-planned",
@@ -17,20 +18,13 @@ interface Props {
 export default function BoardCard({ issue, columnId }: Props) {
   const isDone = issue.normalizedStatus === "done" || columnId === "done";
   const isLate = issue.addedAfterPlanned === true;
-
-  return (
-    <div
-      className={`rounded-md px-3 py-2.5 text-sm font-medium flex items-start gap-2 ${statusColorMap[columnId]} text-primary-foreground shadow-md transition-transform hover:scale-[1.02]`}
-    >
+  const jiraUrl = getJiraIssueUrl(issue);
+  const cardContent = (
+    <>
       <div className="flex flex-1 flex-wrap items-start gap-1 leading-snug">
-        <a
-          href={issue.browseUrl}
-          target="_blank"
-          rel="noreferrer"
-          className="shrink-0 font-semibold underline-offset-2 hover:underline"
-        >
+        <span className="shrink-0 font-semibold underline-offset-2 hover:underline">
           {issue.key}
-        </a>
+        </span>
         <span className="shrink-0 opacity-80">-</span>
         <span className="flex-1 whitespace-normal break-words">
           {issue.summary}
@@ -50,6 +44,29 @@ export default function BoardCard({ issue, columnId }: Props) {
           {isDone && <CheckCircle2 className="h-4 w-4 shrink-0 opacity-80" />}
         </div>
       </div>
+    </>
+  );
+
+  if (jiraUrl) {
+    return (
+      <a
+        href={jiraUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label={`${issue.key}: ${issue.summary}`}
+        className={`rounded-md px-3 py-2.5 text-sm font-medium flex items-start gap-2 ${statusColorMap[columnId]} text-primary-foreground shadow-md transition-transform hover:scale-[1.02] hover:no-underline`}
+      >
+        {cardContent}
+      </a>
+    );
+  }
+
+  // No Jira config found - cannot construct browse URL
+  return (
+    <div
+      className={`rounded-md px-3 py-2.5 text-sm font-medium flex items-start gap-2 ${statusColorMap[columnId]} text-primary-foreground shadow-md transition-transform hover:scale-[1.02]`}
+    >
+      {cardContent}
     </div>
   );
 }
