@@ -23,12 +23,13 @@ import { Pie, PieChart, Cell } from "recharts";
 const CAPACITY_BY_COMPANY = {
   MB: 227,
   ISA: 163,
+  SYSTEM: 0,
 } as const;
 
 interface Props {
   config: JiraConfig;
   onLogout: () => void;
-  company?: "ISA" | "MB";
+  company?: "ISA" | "MB" | "SYSTEM";
 }
 
 export default function SprintBoard({ config, onLogout, company }: Props) {
@@ -43,7 +44,7 @@ export default function SprintBoard({ config, onLogout, company }: Props) {
     fetchBoard,
   } = useJiraBoard();
   const [clock, setClock] = useState(new Date());
-  const [companyFilter, setCompanyFilter] = useState<"all" | "ISA" | "MB">(
+  const [companyFilter, setCompanyFilter] = useState<"all" | "ISA" | "MB" | "SYSTEM">(
     company ?? "all",
   );
 
@@ -172,36 +173,51 @@ export default function SprintBoard({ config, onLogout, company }: Props) {
     remaining: { label: "Restante", color: "#e5e7eb" },
   } as const;
 
-  const { completedHours, remainingHours, capacityPercentage, capacityData, isExceeding } =
-    useMemo(() => {
-      const doneColumn = filteredColumns.find((col) => col.id === "done");
-      const completedHours = (doneColumn?.issues || []).reduce(
-        (total, issue) => total + storyPointsToHours(issue.storyPoints),
-        0,
-      );
+  const {
+    completedHours,
+    remainingHours,
+    capacityPercentage,
+    capacityData,
+    isExceeding,
+  } = useMemo(() => {
+    const doneColumn = filteredColumns.find((col) => col.id === "done");
+    const completedHours = (doneColumn?.issues || []).reduce(
+      (total, issue) => total + storyPointsToHours(issue.storyPoints),
+      0,
+    );
 
-      const isExceeding = completedHours > totalCapacityHours;
-      const remainingHours = isExceeding ? 0 : totalCapacityHours - completedHours;
-      const capacityPercentage = Math.round(
-        (completedHours / totalCapacityHours) * 100,
-      );
+    const isExceeding = completedHours > totalCapacityHours;
+    const remainingHours = isExceeding
+      ? 0
+      : totalCapacityHours - completedHours;
+    const capacityPercentage = Math.round(
+      (completedHours / totalCapacityHours) * 100,
+    );
 
-      return {
-        completedHours,
-        remainingHours,
-        capacityPercentage,
-        isExceeding,
-        capacityData: isExceeding
-          ? [
-              { name: "completed", label: "Concluído", value: totalCapacityHours },
-              { name: "exceeding", label: "Excedente", value: completedHours - totalCapacityHours },
-            ]
-          : [
-              { name: "completed", label: "Concluído", value: completedHours },
-              { name: "remaining", label: "Restante", value: remainingHours },
-            ],
-      };
-    }, [filteredColumns, totalCapacityHours]);
+    return {
+      completedHours,
+      remainingHours,
+      capacityPercentage,
+      isExceeding,
+      capacityData: isExceeding
+        ? [
+            {
+              name: "completed",
+              label: "Concluído",
+              value: totalCapacityHours,
+            },
+            {
+              name: "exceeding",
+              label: "Excedente",
+              value: completedHours - totalCapacityHours,
+            },
+          ]
+        : [
+            { name: "completed", label: "Concluído", value: completedHours },
+            { name: "remaining", label: "Restante", value: remainingHours },
+          ],
+    };
+  }, [filteredColumns, totalCapacityHours]);
 
   return (
     <div className="min-h-screen bg-background p-6 flex flex-col gap-5">
@@ -245,7 +261,7 @@ export default function SprintBoard({ config, onLogout, company }: Props) {
               <Select
                 value={companyFilter}
                 onValueChange={(value) =>
-                  setCompanyFilter(value as "all" | "ISA" | "MB")
+                  setCompanyFilter(value as "all" | "ISA" | "MB" | "SYSTEM")
                 }
                 disabled={loading}
               >
@@ -256,6 +272,7 @@ export default function SprintBoard({ config, onLogout, company }: Props) {
                   <SelectItem value="all">Todas</SelectItem>
                   <SelectItem value="ISA">ISA</SelectItem>
                   <SelectItem value="MB">MB</SelectItem>
+                  <SelectItem value="SYSTEM">SYSTEM</SelectItem>
                 </SelectContent>
               </Select>
             )}
