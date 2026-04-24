@@ -422,6 +422,12 @@ export default function SprintBoard({ config, onLogout, company }: Props) {
                   : `Encerrada há ${Math.abs(sprintDaysLeft)} dia${Math.abs(sprintDaysLeft) === 1 ? "" : "s"}`}
             </span>
           )}
+
+          {/* Percent of issues added after planning */}
+          <span className="rounded-md bg-secondary px-3 py-1.5 text-muted-foreground">
+            Fora do planejamento:{" "}
+            <strong className="text-foreground">{percentAddedOutsidePlan}%</strong>
+          </span>
         </div>
 
         <div className="space-y-1">
