@@ -255,6 +255,8 @@ export default function SprintBoard({ config, onLogout, company }: Props) {
     };
   }, [filteredColumns, totalCapacityHours]);
 
+  const visibleColumns = filteredColumns.filter((col) => col.id !== "planned");
+
   return (
     <div className="min-h-screen bg-background p-6 flex flex-col gap-5">
       {/* Header */}
@@ -463,12 +465,13 @@ export default function SprintBoard({ config, onLogout, company }: Props) {
       )}
 
       {/* Board */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 flex-1">
-        {filteredColumns
-          .filter((col) => col.id !== "planned") // hide 'Planejado' column
-          .map((col) => (
-            <BoardColumnComponent key={col.id} column={col} />
-          ))}
+      <div
+        className="grid gap-4 flex-1"
+        style={{ gridTemplateColumns: `repeat(${visibleColumns.length}, minmax(220px, 1fr))` }}
+      >
+        {visibleColumns.map((col) => (
+          <BoardColumnComponent key={col.id} column={col} />
+        ))}
       </div>
     </div>
   );
