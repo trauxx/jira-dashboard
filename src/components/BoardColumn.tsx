@@ -31,7 +31,7 @@ export default function BoardColumnComponent({
   }, [column.issues]);
 
   return (
-    <div className="flex flex-col min-w-[220px] flex-1">
+    <div className="flex flex-col w-full h-full">
       <div
         className={`rounded-t-lg px-3 py-2.5 text-[11px] font-bold uppercase tracking-widest ${headerColors[column.id]} flex items-center justify-between gap-2`}
       >
