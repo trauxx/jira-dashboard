@@ -361,7 +361,7 @@ export default function SprintBoard({ config, onLogout, company }: Props) {
                 <span
                   className={`text-[11px] ${isExceeding ? "text-orange-500" : "text-muted-foreground"}`}
                 >
-                  {completedHours}h de {totalCapacityHours}h ({Math.round(totalSP)})
+                  {completedHours}h de {totalCapacityHours}h
                 </span>
               </div>
             </div>
