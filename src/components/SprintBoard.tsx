@@ -325,58 +325,46 @@ export default function SprintBoard({ config, onLogout, company }: Props) {
               </span>
             </div>
             {/** Center text and dynamic sizing: show total story points next to capacity hours. If the text is long, increase the chart size. */}
-            {(() => {
-              const centerText = `${completedHours}h de ${totalCapacityHours}h (${Math.round(totalSP)}sp)`;
-              // Always use a larger chart to improve legibility
-              const chartHeightClass = "h-72";
-              const innerR = 75;
-              const outerR = 110;
-
-              return (
-                <div className={`relative ${chartHeightClass} mt-2`}>
-                  <ChartContainer
-                    config={capacityChartConfig}
-                    className="h-full w-full aspect-auto"
+            <div className="relative h-36 mt-2">
+              <ChartContainer
+                config={capacityChartConfig}
+                className="h-full w-full aspect-auto"
+              >
+                <PieChart>
+                  <Pie
+                    data={capacityData}
+                    dataKey="value"
+                    nameKey="label"
+                    innerRadius={45}
+                    outerRadius={70}
+                    paddingAngle={2}
+                    strokeWidth={0}
                   >
-                    <PieChart>
-                      <Pie
-                        data={capacityData}
-                        dataKey="value"
-                        nameKey="label"
-                        innerRadius={innerR}
-                        outerRadius={outerR}
-                        paddingAngle={2}
-                        strokeWidth={0}
-                      >
-                        {capacityData.map((entry) => (
-                          <Cell
-                            key={entry.name}
-                            fill={
-                              entry.name === "exceeding"
-                                ? "#f97316"
-                                : `var(--color-${entry.name})`
-                            }
-                          />
-                        ))}
-                      </Pie>
-                      <ChartTooltip content={<ChartTooltipContent hideLabel />} />
-                    </PieChart>
-                  </ChartContainer>
-
-                  <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center px-2 text-center">
-                    <span className="text-3xl font-bold text-foreground">
-                      {capacityPercentage}%
-                    </span>
-                    <span
-                      className={`text-sm md:text-base ${isExceeding ? "text-orange-500" : "text-muted-foreground"}`}
-                    >
-                      {centerText}
-                    </span>
-                  </div>
-                </div>
-              );
-            })()}
-            
+                    {capacityData.map((entry) => (
+                      <Cell
+                        key={entry.name}
+                        fill={
+                          entry.name === "exceeding"
+                            ? "#f97316"
+                            : `var(--color-${entry.name})`
+                        }
+                      />
+                    ))}
+                  </Pie>
+                  <ChartTooltip content={<ChartTooltipContent hideLabel />} />
+                </PieChart>
+              </ChartContainer>
+              <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+                <span className="text-2xl font-bold text-foreground">
+                  {capacityPercentage}%
+                </span>
+                <span
+                  className={`text-[11px] ${isExceeding ? "text-orange-500" : "text-muted-foreground"}`}
+                >
+                  {completedHours}h de {totalCapacityHours}h ({Math.round(totalSP)})
+                </span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
