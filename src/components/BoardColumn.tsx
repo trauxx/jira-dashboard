@@ -30,12 +30,16 @@ export default function BoardColumnComponent({
     });
   }, [column.issues]);
 
+  const totalPoints = useMemo(() => {
+    return column.issues.reduce((s, i) => s + (typeof i.storyPoints === "number" ? i.storyPoints : 0), 0);
+  }, [column.issues]);
+
   return (
     <div className="flex flex-col w-full h-full">
       <div
         className={`rounded-t-lg px-3 py-2.5 text-[11px] font-bold uppercase tracking-widest ${headerColors[column.id]} flex items-center justify-between gap-2`}
       >
-        <span>{column.title}</span>
+        <span>{`${column.title}: ${column.issues.length} (${Math.round(totalPoints)}sp)`}</span>
       </div>
       <div className="flex flex-col gap-2 rounded-b-lg bg-secondary/50 p-3 min-h-[200px] flex-1">
         {column.issues.length === 0 && (

@@ -19,6 +19,7 @@ import {
   ChartTooltipContent,
 } from "@/components/ui/chart";
 import { Pie, PieChart, Cell } from "recharts";
+import computeSprintMetrics from "@/lib/sprintMetrics";
 
 const CAPACITY_BY_COMPANY = {
   MB: 227,
@@ -133,46 +134,17 @@ export default function SprintBoard({ config, onLogout, company }: Props) {
 
   const {
     totalIssues,
+    totalSP,
     todoCount,
+    todoSP,
     inProgressCount,
+    inProgressSP,
     doneCount,
+    doneSP,
     percTodo,
     percInProgress,
     percDone,
-  } = useMemo(() => {
-    const seen = new Set<string>();
-    let total = 0;
-    let todo = 0;
-    let inprog = 0;
-    let done = 0;
-
-    filteredColumns
-      .filter(
-        (c) => c.id === "todo" || c.id === "inprogress" || c.id === "done",
-      )
-      .forEach((col) => {
-        col.issues.forEach((issue) => {
-          // Skip if we already counted this issue (to avoid double-counting planned duplicates)
-          if (seen.has(issue.id)) return;
-          seen.add(issue.id);
-          total += 1;
-          if (col.id === "todo") todo += 1;
-          if (col.id === "inprogress") inprog += 1;
-          if (col.id === "done") done += 1;
-        });
-      });
-
-    const denom = total || 1; // avoid divide by zero
-    return {
-      totalIssues: total,
-      todoCount: todo,
-      inProgressCount: inprog,
-      doneCount: done,
-      percTodo: Math.round((todo / denom) * 100),
-      percInProgress: Math.round((inprog / denom) * 100),
-      percDone: Math.round((done / denom) * 100),
-    };
-  }, [filteredColumns]);
+  } = useMemo(() => computeSprintMetrics(filteredColumns), [filteredColumns]);
 
   const addedAfterCount = useMemo(() => {
     const seen = new Set<string>();
@@ -403,17 +375,17 @@ export default function SprintBoard({ config, onLogout, company }: Props) {
         <div className="flex flex-wrap gap-3">
           <span className="rounded-md bg-secondary px-3 py-1.5 text-muted-foreground">
             Demandas da Sprint:{" "}
-            <strong className="text-foreground">{totalIssues}</strong>
+            <strong className="text-foreground">{totalIssues} ({Math.round(totalSP)}sp)</strong>
           </span>
           <span className="rounded-md bg-secondary px-3 py-1.5 text-muted-foreground">
-            A Fazer: <strong className="text-foreground">{todoCount}</strong>
+            A Fazer: <strong className="text-foreground">{todoCount} ({Math.round(todoSP)}sp)</strong>
           </span>
           <span className="rounded-md bg-secondary px-3 py-1.5 text-muted-foreground">
             Em Andamento:{" "}
-            <strong className="text-foreground">{inProgressCount}</strong>
+            <strong className="text-foreground">{inProgressCount} ({Math.round(inProgressSP)}sp)</strong>
           </span>
           <span className="rounded-md bg-secondary px-3 py-1.5 text-muted-foreground">
-            Concluído: <strong className="text-foreground">{doneCount}</strong>
+            Concluído: <strong className="text-foreground">{doneCount} ({Math.round(doneSP)}sp)</strong>
           </span>
           {sprintDaysLeft !== null && (
             <span className="rounded-md bg-secondary px-3 py-1.5 text-muted-foreground">
