@@ -327,10 +327,10 @@ export default function SprintBoard({ config, onLogout, company }: Props) {
             {/** Center text and dynamic sizing: show total story points next to capacity hours. If the text is long, increase the chart size. */}
             {(() => {
               const centerText = `${completedHours}h de ${totalCapacityHours}h (${Math.round(totalSP)}sp)`;
-              const needBigger = centerText.length > 22;
-              const chartHeightClass = needBigger ? "h-56" : "h-36";
-              const innerR = needBigger ? 60 : 45;
-              const outerR = needBigger ? 90 : 70;
+              // Always use a larger chart to improve legibility
+              const chartHeightClass = "h-72";
+              const innerR = 75;
+              const outerR = 110;
 
               return (
                 <div className={`relative ${chartHeightClass} mt-2`}>
@@ -364,11 +364,11 @@ export default function SprintBoard({ config, onLogout, company }: Props) {
                   </ChartContainer>
 
                   <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center px-2 text-center">
-                    <span className="text-2xl font-bold text-foreground">
+                    <span className="text-3xl font-bold text-foreground">
                       {capacityPercentage}%
                     </span>
                     <span
-                      className={`text-[11px] ${isExceeding ? "text-orange-500" : "text-muted-foreground"}`}
+                      className={`text-sm md:text-base ${isExceeding ? "text-orange-500" : "text-muted-foreground"}`}
                     >
                       {centerText}
                     </span>
