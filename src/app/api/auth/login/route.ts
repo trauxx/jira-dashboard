@@ -1,0 +1,84 @@
+import { NextResponse } from "next/server";
+
+const API_URL = process.env.TICKETS_API_URL || "https://api.acessofacil.com/v2";
+const COMPANY_ORIGIN =
+  process.env.TICKETS_COMPANY_ORIGIN || "https://meubilhete.com.br";
+
+interface LoginPayload {
+  username?: string;
+  password?: string;
+  twoFactorCode?: string;
+}
+
+export async function POST(req: Request) {
+  try {
+    const body: LoginPayload = await req.json();
+    const { username, password, twoFactorCode } = body;
+
+    if (!username || !password) {
+      return NextResponse.json(
+        { error: "Usuário e senha são obrigatórios" },
+        { status: 400 },
+      );
+    }
+
+    const res = await fetch(`${API_URL}/auth/user`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+        // CompanyMiddleware da tickets-apiv2 resolve a empresa pelo Origin
+        Origin: COMPANY_ORIGIN,
+      },
+      cache: "no-store",
+      body: JSON.stringify({
+        username,
+        password,
+        ...(twoFactorCode ? { twoFactorCode } : {}),
+        origin: "web",
+      }),
+    });
+
+    const data = await res.json().catch(() => null);
+
+    if (!res.ok || !data?.status) {
+      return NextResponse.json(
+        { error: data?.message || `Erro ao autenticar (${res.status})` },
+        { status: res.status === 200 ? 401 : res.status },
+      );
+    }
+
+    const result = data.result;
+
+    // Usuário com 2FA habilitado: a API devolve token nulo e twoFactor=true
+    if (result?.twoFactor && !result?.token) {
+      return NextResponse.json({
+        twoFactor: true,
+        twoFactorQrCode: result.twoFactorQrCode ?? null,
+        twoFactorUrl: result.twoFactorUrl ?? null,
+      });
+    }
+
+    if (!result?.token) {
+      return NextResponse.json(
+        { error: "Resposta de autenticação inválida" },
+        { status: 502 },
+      );
+    }
+
+    return NextResponse.json({
+      token: result.token,
+      user: {
+        id: result.id,
+        username: result.username,
+        email: result.email,
+        name: result.name,
+        companyId: result.companyId,
+        permissions: result.permissions ?? [],
+      },
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Erro inesperado";
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
+}

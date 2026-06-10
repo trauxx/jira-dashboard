@@ -17,11 +17,26 @@ export interface JiraIssue {
   addedAfterPlanned?: boolean;
 }
 
+// Campos opcionais: quando ausentes, o servidor usa as credenciais do ambiente
 export interface JiraConfig {
-  domain: string;
+  domain?: string;
+  email?: string;
+  apiToken?: string;
+  boardId?: string;
+}
+
+export interface AuthUser {
+  id: string;
+  username: string;
   email: string;
-  apiToken: string;
-  boardId: string;
+  name: string;
+  companyId: string;
+  permissions: string[];
+}
+
+export interface AuthSession {
+  token: string;
+  user: AuthUser;
 }
 
 export interface SprintInfo {

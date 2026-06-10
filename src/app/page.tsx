@@ -1,21 +1,30 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import JiraLoginForm from "@/components/JiraLoginForm";
+import AuthGate from "@/components/AuthGate";
 import SprintBoard from "@/components/SprintBoard";
 import { JiraConfig } from "@/types/jira";
+import { useAuth } from "@/hooks/useAuth";
 import { getStoredConfig } from "@/hooks/useJiraBoard";
 
-export default function HomePage() {
+function HomeBoard() {
+  const { logout } = useAuth();
   const [config, setConfig] = useState<JiraConfig | null>(null);
 
+  // Config local sobrescreve as credenciais padrão do servidor (env)
   useEffect(() => {
-    setConfig(getStoredConfig());
+    setConfig(getStoredConfig() ?? {});
   }, []);
 
-  if (!config) {
-    return <JiraLoginForm onConnect={setConfig} />;
-  }
+  if (!config) return null;
 
-  return <SprintBoard config={config} onLogout={() => setConfig(null)} />;
+  return <SprintBoard config={config} onLogout={logout} />;
+}
+
+export default function HomePage() {
+  return (
+    <AuthGate>
+      <HomeBoard />
+    </AuthGate>
+  );
 }

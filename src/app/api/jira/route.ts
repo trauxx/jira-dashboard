@@ -17,7 +17,13 @@ function buildAuthHeader(email: string, apiToken: string) {
 export async function POST(req: Request) {
   try {
     const body: JiraConfigPayload = await req.json();
-    const { domain, email, apiToken, boardId, sprintId } = body;
+    const { sprintId } = body;
+
+    // Credenciais enviadas pelo client têm prioridade; caso contrário usa as do ambiente
+    const domain = body.domain || process.env.JIRA_DOMAIN;
+    const email = body.email || process.env.JIRA_EMAIL;
+    const apiToken = body.apiToken || process.env.JIRA_API_TOKEN;
+    const boardId = body.boardId || process.env.JIRA_BOARD_ID;
 
     if (!domain || !email || !apiToken || !boardId) {
       return NextResponse.json(
