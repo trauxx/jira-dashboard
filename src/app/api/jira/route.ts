@@ -20,6 +20,28 @@ function buildAuthHeader(email: string, apiToken: string) {
   return `Basic ${base64}`;
 }
 
+// A descrição do Jira (API v3) vem em Atlassian Document Format (ADF).
+// Achata recursivamente para texto puro, preservando quebras de parágrafo.
+function adfToText(node: any): string {
+  if (!node) return "";
+  if (typeof node === "string") return node;
+
+  if (node.type === "text") return node.text ?? "";
+  if (node.type === "hardBreak") return "\n";
+
+  const children = Array.isArray(node.content)
+    ? node.content.map(adfToText).join("")
+    : "";
+
+  const blockTypes = ["paragraph", "heading", "listItem", "blockquote"];
+  if (blockTypes.includes(node.type)) return `${children}\n`;
+  if (node.type === "bulletList" || node.type === "orderedList") {
+    return children;
+  }
+
+  return children;
+}
+
 export async function POST(req: Request) {
   try {
     const body: JiraConfigPayload = await req.json();
@@ -150,6 +172,7 @@ export async function POST(req: Request) {
           "issuetype",
           "created",
           "labels",
+          "description",
           "customfield_10016",
           "customfield_10026",
         ],
@@ -180,6 +203,9 @@ export async function POST(req: Request) {
         issueType: issue.fields.issuetype?.name,
         browseUrl: `${baseUrl}/browse/${issue.key}`,
         labels: issue.fields.labels ?? [],
+        description: issue.fields.description
+          ? adfToText(issue.fields.description).trim()
+          : "",
         storyPoints:
           issue.fields.customfield_10016 ?? // padrão cloud
           issue.fields.customfield_10026 ?? // alternativo comum

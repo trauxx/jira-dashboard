@@ -13,6 +13,7 @@ export interface JiraIssue {
   self?: string;
   selfUrl?: string;
   labels?: string[];
+  description?: string;
   normalizedStatus?: ColumnStatus;
   addedAfterPlanned?: boolean;
 }
