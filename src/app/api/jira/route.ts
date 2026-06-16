@@ -64,8 +64,23 @@ export async function POST(req: Request) {
     );
 
     if (!sprintRes.ok) {
+      const jiraBody = await sprintRes.text().catch(() => "");
       return NextResponse.json(
-        { error: `Erro ao buscar sprints (${sprintRes.status})` },
+        {
+          error: `Erro ao buscar sprints (${sprintRes.status})`,
+          jiraMessage: jiraBody.slice(0, 500),
+          debug: {
+            domain,
+            email,
+            boardId,
+            tokenLength: apiToken.length,
+            tokenSource: body.apiToken
+              ? "client"
+              : process.env.JIRA_API_TOKEN
+                ? "env"
+                : "default",
+          },
+        },
         { status: sprintRes.status },
       );
     }
