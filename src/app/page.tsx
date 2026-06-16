@@ -18,7 +18,7 @@ function HomeBoard() {
 
   if (!config) return null;
 
-  return <SprintBoard config={config} onLogout={logout} />;
+  return <SprintBoard config={config} onLogout={logout} company="MB" />;
 }
 
 export default function HomePage() {
