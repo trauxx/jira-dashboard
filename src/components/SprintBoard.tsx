@@ -22,8 +22,8 @@ import { Pie, PieChart, Cell } from "recharts";
 import computeSprintMetrics from "@/lib/sprintMetrics";
 
 const CAPACITY_BY_COMPANY = {
-  MB: 227,
-  ISA: 163,
+  MB: 447,
+  ISA: 0,
   SYSTEM: 0,
 } as const;
 
