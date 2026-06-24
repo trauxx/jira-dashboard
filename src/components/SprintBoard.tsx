@@ -21,8 +21,9 @@ import {
 import { Pie, PieChart, Cell } from "recharts";
 import computeSprintMetrics from "@/lib/sprintMetrics";
 
+// baseline capacities (MB default is 227 for sprints before sprint 9)
 const CAPACITY_BY_COMPANY = {
-  MB: 447,
+  MB: 227,
   ISA: 0,
   SYSTEM: 0,
 } as const;
@@ -55,12 +56,7 @@ export default function SprintBoard({ config, onLogout, company }: Props) {
     }
   }, [company]);
 
-  const totalCapacityHours = useMemo(() => {
-    if (companyFilter === "all") {
-      return CAPACITY_BY_COMPANY.MB + CAPACITY_BY_COMPANY.ISA + CAPACITY_BY_COMPANY.SYSTEM;
-    }
-    return CAPACITY_BY_COMPANY[companyFilter];
-  }, [companyFilter]);
+  
 
   useEffect(() => {
     fetchBoard(config);
@@ -180,6 +176,25 @@ export default function SprintBoard({ config, onLogout, company }: Props) {
   const currentSprint = sprints.find((s) => s.id === selectedSprintId) ?? sprints.find((s) => s.state === "active") ?? null;
   const sprintStartStr = currentSprint && currentSprint.startDate ? new Date(currentSprint.startDate).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }) : null;
   const sprintEndStr = currentSprint && currentSprint.endDate ? new Date(currentSprint.endDate).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }) : null;
+
+  // Determine MB capacity based on sprint number (MB is 447 from sprint 9 onwards)
+  const parseSprintNumber = (sprintObj: { name?: string } | null) => {
+    if (!sprintObj?.name) return null;
+    const m = sprintObj.name.match(/(\d+)/);
+    return m ? Number(m[1]) : null;
+  };
+
+  const sprintNumber = parseSprintNumber(currentSprint);
+  const isSprintAtLeast9 = sprintNumber !== null ? sprintNumber >= 9 : false;
+
+  const totalCapacityHours = useMemo(() => {
+    const mbCapacity = isSprintAtLeast9 ? 447 : CAPACITY_BY_COMPANY.MB;
+    const capacities = { MB: mbCapacity, ISA: CAPACITY_BY_COMPANY.ISA, SYSTEM: CAPACITY_BY_COMPANY.SYSTEM } as const;
+    if (companyFilter === "all") {
+      return capacities.MB + capacities.ISA + capacities.SYSTEM;
+    }
+    return capacities[companyFilter as keyof typeof capacities];
+  }, [companyFilter, isSprintAtLeast9]);
 
   const {
     completedHours,
