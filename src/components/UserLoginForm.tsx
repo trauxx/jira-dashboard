@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import TurnstileWidget from "@/components/TurnstileWidget";
 
 export default function UserLoginForm() {
   const { login } = useAuth();
@@ -15,19 +16,39 @@ export default function UserLoginForm() {
   const [twoFactorQrCode, setTwoFactorQrCode] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const [turnstileKey, setTurnstileKey] = useState(0);
+
+  const handleTurnstileVerify = useCallback((token: string) => {
+    setTurnstileToken(token);
+  }, []);
+
+  const handleTurnstileExpire = useCallback(() => {
+    setTurnstileToken(null);
+    setTurnstileKey((k) => k + 1);
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+
+    if (!turnstileToken) {
+      setError("Aguardando verificação de segurança");
+      return;
+    }
+
     setLoading(true);
 
     const result = await login(
       username,
       password,
       needsTwoFactor ? twoFactorCode : undefined,
+      turnstileToken,
     );
 
     setLoading(false);
+    setTurnstileToken(null);
+    setTurnstileKey((k) => k + 1);
 
     if (result.success) return;
 
@@ -125,6 +146,14 @@ export default function UserLoginForm() {
             {error}
           </p>
         )}
+
+        <div className="flex justify-center">
+          <TurnstileWidget
+            key={turnstileKey}
+            onVerify={handleTurnstileVerify}
+            onExpire={handleTurnstileExpire}
+          />
+        </div>
 
         <Button
           type="submit"

@@ -8,12 +8,13 @@ interface LoginPayload {
   username?: string;
   password?: string;
   twoFactorCode?: string;
+  turnstileToken?: string;
 }
 
 export async function POST(req: Request) {
   try {
     const body: LoginPayload = await req.json();
-    const { username, password, twoFactorCode } = body;
+    const { username, password, twoFactorCode, turnstileToken } = body;
 
     if (!username || !password) {
       return NextResponse.json(
@@ -35,6 +36,7 @@ export async function POST(req: Request) {
         username,
         password,
         ...(twoFactorCode ? { twoFactorCode } : {}),
+        ...(turnstileToken ? { turnstileToken } : {}),
         origin: "web",
       }),
     });

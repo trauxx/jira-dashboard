@@ -33,6 +33,7 @@ interface AuthContextValue {
     username: string,
     password: string,
     twoFactorCode?: string,
+    turnstileToken?: string,
   ) => Promise<LoginResult>;
   logout: () => void;
 }
@@ -118,12 +119,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       username: string,
       password: string,
       twoFactorCode?: string,
+      turnstileToken?: string,
     ): Promise<LoginResult> => {
       try {
         const res = await fetch("/api/auth/login", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ username, password, twoFactorCode }),
+          body: JSON.stringify({ username, password, twoFactorCode, turnstileToken }),
         });
 
         const data = await res.json();
