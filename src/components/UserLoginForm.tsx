@@ -16,9 +16,16 @@ export default function UserLoginForm() {
   const [twoFactorQrCode, setTwoFactorQrCode] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  // Token e key para o widget de login
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const [turnstileKey, setTurnstileKey] = useState(0);
 
+  // Token e key separados para o widget de 2FA
+  const [turnstileToken2, setTurnstileToken2] = useState<string | null>(null);
+  const [turnstileKey2, setTurnstileKey2] = useState(0);
+
+  // Callbacks do widget de login
   const handleTurnstileVerify = useCallback((token: string) => {
     setTurnstileToken(token);
   }, []);
@@ -28,11 +35,23 @@ export default function UserLoginForm() {
     setTurnstileKey((k) => k + 1);
   }, []);
 
+  // Callbacks do widget de 2FA
+  const handleTurnstile2Verify = useCallback((token: string) => {
+    setTurnstileToken2(token);
+  }, []);
+
+  const handleTurnstile2Expire = useCallback(() => {
+    setTurnstileToken2(null);
+    setTurnstileKey2((k) => k + 1);
+  }, []);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
 
-    if (!turnstileToken) {
+    const activeToken = needsTwoFactor ? turnstileToken2 : turnstileToken;
+
+    if (!activeToken) {
       setError("Aguardando verificação de segurança");
       return;
     }
@@ -43,14 +62,16 @@ export default function UserLoginForm() {
       username,
       password,
       needsTwoFactor ? twoFactorCode : undefined,
-      turnstileToken,
+      activeToken,
     );
 
     setLoading(false);
-    setTurnstileToken(null);
-    setTurnstileKey((k) => k + 1);
 
-    if (result.success) return;
+    if (result.success) {
+      setTurnstileToken(null);
+      setTurnstileKey((k) => k + 1);
+      return;
+    }
 
     if (result.twoFactor) {
       setNeedsTwoFactor(true);
@@ -58,6 +79,14 @@ export default function UserLoginForm() {
       return;
     }
 
+    // Erro: reseta o widget da etapa atual
+    if (needsTwoFactor) {
+      setTurnstileToken2(null);
+      setTurnstileKey2((k) => k + 1);
+    } else {
+      setTurnstileToken(null);
+      setTurnstileKey((k) => k + 1);
+    }
     setError(result.error || "Erro ao autenticar");
   };
 
@@ -148,11 +177,19 @@ export default function UserLoginForm() {
         )}
 
         <div className="flex justify-center">
-          <TurnstileWidget
-            key={turnstileKey}
-            onVerify={handleTurnstileVerify}
-            onExpire={handleTurnstileExpire}
-          />
+          {needsTwoFactor ? (
+            <TurnstileWidget
+              key={turnstileKey2}
+              onVerify={handleTurnstile2Verify}
+              onExpire={handleTurnstile2Expire}
+            />
+          ) : (
+            <TurnstileWidget
+              key={turnstileKey}
+              onVerify={handleTurnstileVerify}
+              onExpire={handleTurnstileExpire}
+            />
+          )}
         </div>
 
         <Button
@@ -160,7 +197,7 @@ export default function UserLoginForm() {
           disabled={loading}
           className="w-full bg-primary text-primary-foreground hover:bg-primary/90 font-semibold"
         >
-          {loading ? "Autenticando..." : "Entrar"}
+          {loading ? "Autenticando..." : needsTwoFactor ? "Verificar" : "Entrar"}
         </Button>
       </form>
     </div>
