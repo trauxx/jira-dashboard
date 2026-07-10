@@ -4,10 +4,12 @@ const OWU_URL = "http://44.195.169.137:3000/api/chat/completions";
 const OWU_BASE_MODEL = "claude-sonnet-4";
 
 async function getOwuToken(): Promise<string> {
+  const email = process.env.OWU_EMAIL || "leonardocastro.consultor@gmail.com";
+  const password = process.env.OWU_PASSWORD || "odranoeL6@";
   const res = await fetch("http://44.195.169.137:3000/api/v1/auths/signin", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email: process.env.OWU_EMAIL, password: process.env.OWU_PASSWORD }),
+    body: JSON.stringify({ email, password }),
   });
   if (!res.ok) throw new Error("Falha ao autenticar no Open WebUI");
   return (await res.json()).token;
