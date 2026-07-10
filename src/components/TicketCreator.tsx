@@ -26,8 +26,10 @@ import { TicketPlus, Loader2 } from "lucide-react";
 
 interface Props {
   config: JiraConfig;
-  company: "ISA" | "MB" | "SYSTEM";
+  company: string;
 }
+
+const TICKET_LABEL = (company: string) => company === "ISA" ? "ISA" : "MB";
 
 interface FormData {
   summary: string;
@@ -50,42 +52,33 @@ const PROJECTS: Record<string, { key: string; name: string }[]> = {
     { key: "MB", name: "MB (Meu Bilhete)" },
   ],
   SYSTEM: [
-    { key: "SYS", name: "Sistema" },
+    { key: "MB", name: "MB (Meu Bilhete)" },
   ],
 };
 
-const PRODUCTS: Record<string, { name: string; repo: string }[]> = {
-  ISA: [
-    { name: "Site Meu Bilhete (meubilhete.com)", repo: "Site" },
-    { name: "Site Ingresso SA", repo: "SiteIngressoSA" },
-    { name: "API de Tickets", repo: "tickets-apiv2" },
-    { name: "Site de Tickets", repo: "tickets-sitev2" },
-    { name: "Dashboard de Tickets", repo: "tickets-dashboard" },
-    { name: "Painel Administrativo", repo: "Painel" },
-    { name: "App Produtor", repo: "tickets-appprodutor" },
-    { name: "App Vendas", repo: "app-vendas-v2" },
-    { name: "App Catracas", repo: "appValidacaoCatracas" },
-    { name: "App Reconhecimento Facial", repo: "appValidacaoNFCFacial" },
-    { name: "Outro", repo: "" },
-  ],
-  MB: [
-    { name: "PDV (Ponto de Venda)", repo: "Pdv" },
-    { name: "PDV Flutter", repo: "Pdv2" },
-    { name: "Controlador", repo: "Controlador" },
-    { name: "Painel Administrativo", repo: "Painel" },
-    { name: "Dashboard", repo: "dashboardv3" },
-    { name: "Delivery", repo: "delivery" },
-    { name: "App Relatorios", repo: "appRelatorios" },
-    { name: "App Times", repo: "app-times" },
-    { name: "Whatsapp Bot", repo: "whatsapp-bot" },
-    { name: "Outro", repo: "" },
-  ],
-  SYSTEM: [
-    { name: "Infraestrutura", repo: "terraform" },
-    { name: "Aws API", repo: "Aws" },
-    { name: "Outro", repo: "" },
-  ],
-};
+const PRODUCTS = [
+  { name: "Site Meu Bilhete (meubilhete.com)", repo: "Site" },
+  { name: "Site Ingresso SA", repo: "SiteIngressoSA" },
+  { name: "API de Tickets", repo: "tickets-apiv2" },
+  { name: "Site de Tickets", repo: "tickets-sitev2" },
+  { name: "Dashboard de Tickets", repo: "tickets-dashboard" },
+  { name: "Painel Administrativo", repo: "Painel" },
+  { name: "App Produtor", repo: "tickets-appprodutor" },
+  { name: "App Vendas", repo: "app-vendas-v2" },
+  { name: "App Catracas", repo: "appValidacaoCatracas" },
+  { name: "App Reconhecimento Facial", repo: "appValidacaoNFCFacial" },
+  { name: "PDV (Ponto de Venda)", repo: "Pdv" },
+  { name: "PDV Flutter", repo: "Pdv2" },
+  { name: "Controlador", repo: "Controlador" },
+  { name: "Dashboard", repo: "dashboardv3" },
+  { name: "Delivery", repo: "delivery" },
+  { name: "App Relatorios", repo: "appRelatorios" },
+  { name: "App Times", repo: "app-times" },
+  { name: "Whatsapp Bot", repo: "whatsapp-bot" },
+  { name: "Infraestrutura", repo: "terraform" },
+  { name: "Aws API", repo: "Aws" },
+  { name: "Outro", repo: "" },
+];
 
 export default function TicketCreator({ config, company }: Props) {
   const [open, setOpen] = useState(false);
@@ -110,7 +103,7 @@ export default function TicketCreator({ config, company }: Props) {
       description: "Qual produto esta com problema?",
       field: "product" as const,
       type: "select" as const,
-      options: PRODUCTS[company]?.map((p) => p.name) ?? [],
+      options: PRODUCTS.map((p) => p.name),
     },
     {
       title: "Ambiente",
@@ -179,7 +172,7 @@ export default function TicketCreator({ config, company }: Props) {
         .filter(Boolean)
         .join("\n\n");
 
-      const labels = [company];
+      const labels = [TICKET_LABEL(company)];
 
       const res = await fetch("/api/jira/issues", {
         method: "POST",
@@ -338,7 +331,7 @@ export default function TicketCreator({ config, company }: Props) {
     <>
       <Button onClick={() => setOpen(true)} className="gap-2">
         <TicketPlus className="h-4 w-4" />
-        Novo Ticket {company}
+        Novo Ticket
       </Button>
 
       <Dialog open={open} onOpenChange={setOpen}>
@@ -372,7 +365,7 @@ export default function TicketCreator({ config, company }: Props) {
                   <p><strong>Resumo:</strong> {form.summary}</p>
                   <p><strong>Tipo:</strong> {form.issueType}</p>
                   <p><strong>Prioridade:</strong> {form.priority}</p>
-                  <p><strong>Labels:</strong> {company}</p>
+                  <p><strong>Label:</strong> {TICKET_LABEL(company)}</p>
                   <p><strong>Descrição:</strong> {form.description}</p>
                   <p><strong>Passo a passo:</strong> {form.stepsToReproduce}</p>
                   <p><strong>Quando aconteceu:</strong> {form.whenHappened}</p>
@@ -416,7 +409,7 @@ export default function TicketCreator({ config, company }: Props) {
                     Criando...
                   </>
                 ) : (
-                  `Criar Ticket ${company}`
+                  `Criar Ticket`
                 )}
               </Button>
             )}
