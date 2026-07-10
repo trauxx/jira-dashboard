@@ -62,7 +62,7 @@ async function createJiraIssue(data: Record<string, string>, label: string) {
 
   const payload = {
     fields: {
-      project: { key: label === "ISA" ? "ISA" : "MB" },
+      project: { key: "ISAMB" },
       summary: data.summary || "Sem título",
       issuetype: { name: issueType },
       description: {
