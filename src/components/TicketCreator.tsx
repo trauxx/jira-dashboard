@@ -1,17 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   Dialog,
   DialogContent,
@@ -22,7 +13,7 @@ import {
 } from "@/components/ui/dialog";
 import { JiraConfig } from "@/types/jira";
 import { toast } from "@/hooks/use-toast";
-import { TicketPlus, Loader2 } from "lucide-react";
+import { TicketPlus, Loader2, Send, User, Bot, ExternalLink } from "lucide-react";
 
 interface Props {
   config: JiraConfig;
@@ -31,301 +22,172 @@ interface Props {
 
 const TICKET_LABEL = (company: string) => company === "ISA" ? "ISA" : "MB";
 
-interface FormData {
-  summary: string;
-  description: string;
-  projectKey: string;
-  issueType: string;
-  priority: string;
-  product: string;
-  environment: string;
-  stepsToReproduce: string;
-  whenHappened: string;
-  affectedUser: string;
+interface Message {
+  role: "user" | "assistant";
+  content: string;
 }
-
-const PROJECTS: Record<string, { key: string; name: string }[]> = {
-  ISA: [
-    { key: "ISA", name: "ISA (Ingressos)" },
-  ],
-  MB: [
-    { key: "MB", name: "MB (Meu Bilhete)" },
-  ],
-  SYSTEM: [
-    { key: "MB", name: "MB (Meu Bilhete)" },
-  ],
-};
-
-const PRODUCTS = [
-  { name: "Site Meu Bilhete (meubilhete.com)", repo: "Site" },
-  { name: "Site Ingresso SA", repo: "SiteIngressoSA" },
-  { name: "API de Tickets", repo: "tickets-apiv2" },
-  { name: "Site de Tickets", repo: "tickets-sitev2" },
-  { name: "Dashboard de Tickets", repo: "tickets-dashboard" },
-  { name: "Painel Administrativo", repo: "Painel" },
-  { name: "App Produtor", repo: "tickets-appprodutor" },
-  { name: "App Vendas", repo: "app-vendas-v2" },
-  { name: "App Catracas", repo: "appValidacaoCatracas" },
-  { name: "App Reconhecimento Facial", repo: "appValidacaoNFCFacial" },
-  { name: "PDV (Ponto de Venda)", repo: "Pdv" },
-  { name: "PDV Flutter", repo: "Pdv2" },
-  { name: "Controlador", repo: "Controlador" },
-  { name: "Dashboard", repo: "dashboardv3" },
-  { name: "Delivery", repo: "delivery" },
-  { name: "App Relatorios", repo: "appRelatorios" },
-  { name: "App Times", repo: "app-times" },
-  { name: "Whatsapp Bot", repo: "whatsapp-bot" },
-  { name: "Infraestrutura", repo: "terraform" },
-  { name: "Aws API", repo: "Aws" },
-  { name: "Outro", repo: "" },
-];
 
 export default function TicketCreator({ config, company }: Props) {
   const [open, setOpen] = useState(false);
-  const [step, setStep] = useState(0);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
-  const [form, setForm] = useState<FormData>({
-    summary: "",
-    description: "",
-    projectKey: PROJECTS[company]?.[0]?.key ?? "MB",
-    issueType: "Task",
-    priority: "Medium",
-    product: "",
-    environment: "",
-    stepsToReproduce: "",
-    whenHappened: "",
-    affectedUser: "",
-  });
+  const [ticketCreated, setTicketCreated] = useState(false);
+  const [ticketUrl, setTicketUrl] = useState("");
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const steps = [
-    {
-      title: "Produto",
-      description: "Qual produto esta com problema?",
-      field: "product" as const,
-      type: "select" as const,
-      options: PRODUCTS.map((p) => p.name),
-    },
-    {
-      title: "Ambiente",
-      description: "Em qual ambiente ocorre?",
-      field: "environment" as const,
-      type: "select" as const,
-      options: ["Producao", "Homologacao", "Desenvolvimento", "Outro"],
-    },
-    {
-      title: "Resumo",
-      description: "Um titulo resumido para o ticket",
-      field: "summary" as const,
-      type: "input" as const,
-    },
-    {
-      title: "Descricao",
-      description: "Descreva detalhadamente o problema",
-      field: "description" as const,
-      type: "textarea" as const,
-    },
-    {
-      title: "Passo a passo",
-      description: "Como reproduzir o problema?",
-      field: "stepsToReproduce" as const,
-      type: "textarea" as const,
-    },
-    {
-      title: "Quando aconteceu?",
-      description: "Quando e como o problema ocorreu?",
-      field: "whenHappened" as const,
-      type: "textarea" as const,
-    },
-    {
-      title: "Usuario / PDV",
-      description: "Qual usuario ou PDV esta afetado? (se aplicavel)",
-      field: "affectedUser" as const,
-      type: "input" as const,
-    },
-    {
-      title: "Tipo e Prioridade",
-      description: "Classifique o ticket",
-      fields: [
-        { field: "issueType" as const, type: "select" as const, label: "Tipo", options: ["Task", "Bug", "Story", "Epic"] },
-        { field: "priority" as const, type: "select" as const, label: "Prioridade", options: ["Low", "Medium", "High", "Highest"] },
-      ],
-    },
-  ];
-
-  const handleSubmit = async () => {
-    if (!form.summary) {
-      toast({ title: "Resumo é obrigatório", variant: "destructive" });
-      return;
+  useEffect(() => {
+    if (open) {
+      setMessages([
+        {
+          role: "assistant",
+          content: `Olá! 👋 Descreva o problema ou solicitação que você quer registrar. Pode incluir o que souber — título, descrição, produto, etc. Se faltar alguma informação, eu vou te perguntando aos poucos.`,
+        },
+      ]);
+      setTicketCreated(false);
+      setTicketUrl("");
+      setInput("");
     }
+  }, [open]);
 
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
+  const handleSend = async () => {
+    const text = input.trim();
+    if (!text || loading) return;
+
+    setMessages((prev) => [...prev, { role: "user", content: text }]);
+    setInput("");
     setLoading(true);
+
     try {
-      const fullDescription = [
-        form.description,
-        `\n---\n**Produto:** ${form.product}`,
-        `**Ambiente:** ${form.environment}`,
-        `**Passo a passo:**\n${form.stepsToReproduce}`,
-        `**Quando aconteceu:**\n${form.whenHappened}`,
-        form.affectedUser ? `**Usuário/PDV:** ${form.affectedUser}` : "",
-        `**Company:** ${company}`,
-      ]
-        .filter(Boolean)
+      const allMessages = [...messages, { role: "user" as const, content: text }];
+      const conversation = allMessages
+        .map((m) => `${m.role === "user" ? "Usuario" : "Sistema"}: ${m.content}`)
         .join("\n\n");
 
-      const labels = [TICKET_LABEL(company)];
+      const label = TICKET_LABEL(company);
+      const systemPrompt = `Você é um assistente de criação de tickets Jira. 
 
-      const res = await fetch("/api/jira/issues", {
+Seguindo o template abaixo, colete as informações que faltam perguntando uma de cada vez.
+
+## TEMPLATE PADRÃO
+- Produto(s): [qual produto? qual repositório? Ex: site, PDV, app, API, painel]
+- Empresa: [ISA ou qualquer outra]
+- Ambiente: [produção, homologação, desenvolvimento]
+- Descrição: [o que acontece?]
+- Passo a passo: [como reproduzir?]
+- Quando aconteceu: [desde quando? em que circunstâncias?]
+- Usuário/PDV afetado: [quem? opcional]
+- Tipo: [Bug, Task, Story, Melhoria]
+- Prioridade: [Baixa, Média, Alta, Crítica]
+
+## REGRAS
+- Se o usuário já forneceu informações suficientes, confirme o resumo e peça autorização.
+- Se faltar algo, pergunte APENAS UMA coisa por vez.
+- Seja direto e objetivo em português.
+- Quando autorizado, responda exatamente: CRIAR_TICKET seguido de um JSON válido com os campos: summary, descricao, produto, empresa, ambiente, passo_a_passo, quando, usuario, tipo, prioridade.
+- Use a label "${label}" para o ticket.
+- Empresa "ISA" → label ISA. Qualquer outra → label MB.`;
+
+      const res = await fetch("/api/jira/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          summary: form.summary,
-          description: fullDescription,
-          projectKey: form.projectKey,
-          issueType: form.issueType,
-          priority: form.priority,
-          labels,
-          config,
+          messages: [
+            { role: "system", content: systemPrompt },
+            ...allMessages,
+          ],
         }),
       });
 
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data.error || "Erro ao criar ticket");
+        throw new Error(data.error || "Erro ao processar");
       }
 
-      toast({
-        title: `Ticket ${data.key} criado com sucesso!`,
-        description: (
-          <a
-            href={data.browseUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="underline"
-          >
-            Abrir no Jira
-          </a>
-        ),
-      });
+      const reply = data.message || data.response || "Entendi, pode me contar mais?";
 
-      setOpen(false);
-      setStep(0);
-      setForm({
-        summary: "",
-        description: "",
-        projectKey: PROJECTS[company]?.[0]?.key ?? "MB",
-        issueType: "Task",
-        priority: "Medium",
-        product: "",
-        environment: "",
-        stepsToReproduce: "",
-        whenHappened: "",
-        affectedUser: "",
-      });
+      if (reply.startsWith("CRIAR_TICKET")) {
+        const jsonStr = reply.replace("CRIAR_TICKET", "").trim();
+        let ticketData: Record<string, string> = {};
+        try {
+          ticketData = JSON.parse(jsonStr);
+        } catch {
+          ticketData = { summary: text };
+        }
+
+        const createRes = await fetch("/api/jira/issues", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            summary: ticketData.summary || text.slice(0, 80),
+            description: [
+              ticketData.descricao || text,
+              ticketData.produto ? `\n\n**Produto:** ${ticketData.produto}` : "",
+              ticketData.empresa ? `**Empresa:** ${ticketData.empresa}` : "",
+              ticketData.ambiente ? `**Ambiente:** ${ticketData.ambiente}` : "",
+              ticketData.passo_a_passo ? `**Passo a passo:**\n${ticketData.passo_a_passo}` : "",
+              ticketData.quando ? `**Quando:** ${ticketData.quando}` : "",
+              ticketData.usuario ? `**Usuário/PDV:** ${ticketData.usuario}` : "",
+            ].filter(Boolean).join("\n"),
+            projectKey: TICKET_LABEL(company) === "ISA" ? "ISA" : "MB",
+            issueType: ticketData.tipo || "Task",
+            priority: ticketData.prioridade || "Medium",
+            labels: [TICKET_LABEL(company)],
+            config,
+          }),
+        });
+
+        const createData = await createRes.json();
+
+        if (!createRes.ok) {
+          throw new Error(createData.error || "Erro ao criar ticket");
+        }
+
+        setMessages((prev) => [
+          ...prev,
+          {
+            role: "assistant",
+            content: `✅ Ticket **${createData.key}** criado com sucesso!\n\n[Abrir no Jira](${createData.browseUrl})`,
+          },
+        ]);
+        setTicketCreated(true);
+        setTicketUrl(createData.browseUrl);
+      } else {
+        setMessages((prev) => [...prev, { role: "assistant", content: reply }]);
+      }
     } catch (err: any) {
-      toast({
-        title: "Erro ao criar ticket",
-        description: err.message,
-        variant: "destructive",
-      });
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "assistant",
+          content: `❌ Erro: ${err.message}`,
+        },
+      ]);
     } finally {
       setLoading(false);
     }
   };
 
-  const renderStep = () => {
-    const s = steps[step];
-    if (!s) return null;
-
-    if ("fields" in s && Array.isArray(s.fields)) {
-      return (
-        <div className="space-y-4">
-          <div>
-            <h3 className="text-lg font-semibold">{s.title}</h3>
-            <p className="text-sm text-muted-foreground">{s.description}</p>
-          </div>
-          {s.fields.map((f) => (
-            <div key={f.field} className="space-y-2">
-              <Label>{f.label}</Label>
-              {f.type === "select" ? (
-                <Select
-                  value={form[f.field]}
-                  onValueChange={(v) => setForm((prev) => ({ ...prev, [f.field]: v }))}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {f.options?.map((opt) => (
-                      <SelectItem key={opt} value={opt}>
-                        {opt}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              ) : null}
-            </div>
-          ))}
-        </div>
-      );
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
     }
-
-    if ("field" in s) {
-      return (
-        <div className="space-y-4">
-          <div>
-            <h3 className="text-lg font-semibold">{s.title}</h3>
-            <p className="text-sm text-muted-foreground">{s.description}</p>
-          </div>
-          <div className="space-y-2">
-            {s.type === "input" && (
-              <Input
-                value={form[s.field]}
-                onChange={(e) => setForm((prev) => ({ ...prev, [s.field]: e.target.value }))}
-                placeholder={s.field === "summary" ? "Ex: Erro ao gerar relatório de vendas" : ""}
-              />
-            )}
-            {s.type === "textarea" && (
-              <Textarea
-                value={form[s.field]}
-                onChange={(e) => setForm((prev) => ({ ...prev, [s.field]: e.target.value }))}
-                rows={4}
-                placeholder={
-                  s.field === "stepsToReproduce"
-                    ? "1. Acesse a tela X\n2. Clique em Y\n3. O erro aparece..."
-                    : s.field === "whenHappened"
-                    ? "Desde a última atualização, por volta das 14h..."
-                    : ""
-                }
-              />
-            )}
-            {s.type === "select" && (
-              <Select
-                value={form[s.field]}
-                onValueChange={(v) => setForm((prev) => ({ ...prev, [s.field]: v }))}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {s.options?.map((opt) => (
-                    <SelectItem key={opt} value={opt}>
-                      {opt}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-          </div>
-        </div>
-      );
-    }
-
-    return null;
   };
 
-  const isLastStep = step === steps.length - 1;
-  const progress = ((step + 1) / steps.length) * 100;
+  const openInOpenWebUI = () => {
+    const baseUrl = "http://44.195.169.137:3000";
+    const modelId = "jira-creator";
+    const prompt = encodeURIComponent(
+      `Criar um ticket para ${company} sobre: ${messages.find((m) => m.role === "user")?.content || ""}`
+    );
+    window.open(`${baseUrl}/?model=${modelId}&prompt=${prompt}`, "_blank");
+  };
 
   return (
     <>
@@ -335,85 +197,87 @@ export default function TicketCreator({ config, company }: Props) {
       </Button>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg h-[600px] flex flex-col">
           <DialogHeader>
-            <DialogTitle>
-              {step < steps.length ? steps[step]?.title : "Revisão"}
-            </DialogTitle>
+            <DialogTitle>Novo Ticket</DialogTitle>
             <DialogDescription>
-              {step < steps.length
-                ? steps[step]?.description
-                : "Revise as informações antes de criar o ticket"}
+              Conte o que precisa e eu vou te ajudando a criar o ticket.
             </DialogDescription>
           </DialogHeader>
 
-          <div className="w-full bg-secondary rounded-full h-1.5 mb-4">
-            <div
-              className="bg-primary h-1.5 rounded-full transition-all duration-300"
-              style={{ width: `${progress}%` }}
-            />
-          </div>
-
-          <div className="min-h-[250px]">
-            {step < steps.length ? (
-              renderStep()
-            ) : (
-              <div className="space-y-3 text-sm">
-                <div className="rounded-lg bg-secondary/50 p-3 space-y-2">
-                  <p><strong>Produto:</strong> {form.product}</p>
-                  <p><strong>Ambiente:</strong> {form.environment}</p>
-                  <p><strong>Resumo:</strong> {form.summary}</p>
-                  <p><strong>Tipo:</strong> {form.issueType}</p>
-                  <p><strong>Prioridade:</strong> {form.priority}</p>
-                  <p><strong>Label:</strong> {TICKET_LABEL(company)}</p>
-                  <p><strong>Descrição:</strong> {form.description}</p>
-                  <p><strong>Passo a passo:</strong> {form.stepsToReproduce}</p>
-                  <p><strong>Quando aconteceu:</strong> {form.whenHappened}</p>
-                  {form.affectedUser && (
-                    <p><strong>Usuário/PDV:</strong> {form.affectedUser}</p>
+          <div className="flex-1 overflow-y-auto space-y-3 px-1 py-2">
+            {messages.map((msg, i) => (
+              <div
+                key={i}
+                className={`flex gap-3 ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+              >
+                {msg.role === "assistant" && (
+                  <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                    <Bot className="h-4 w-4 text-primary" />
+                  </div>
+                )}
+                <div
+                  className={`max-w-[80%] rounded-xl px-4 py-2.5 text-sm whitespace-pre-wrap ${
+                    msg.role === "user"
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-secondary text-secondary-foreground"
+                  }`}
+                >
+                  {msg.content}
+                  {ticketCreated && msg.role === "assistant" && i === messages.length - 1 && (
+                    <div className="mt-2 flex gap-2">
+                      <a
+                        href={ticketUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 text-xs underline"
+                      >
+                        <ExternalLink className="h-3 w-3" />
+                        Abrir no Jira
+                      </a>
+                    </div>
                   )}
                 </div>
+                {msg.role === "user" && (
+                  <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center shrink-0">
+                    <User className="h-4 w-4 text-primary-foreground" />
+                  </div>
+                )}
               </div>
-            )}
+            ))}
+            <div ref={messagesEndRef} />
           </div>
 
-          <DialogFooter className="gap-2">
-            {step > 0 && (
-              <Button
-                variant="outline"
-                onClick={() => setStep((s) => s - 1)}
-                disabled={loading}
-              >
-                Voltar
+          <div className="flex items-end gap-2 border-t pt-3">
+            <Textarea
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="Descreva o problema ou solicitação..."
+              rows={2}
+              className="resize-none"
+              disabled={loading || ticketCreated}
+            />
+            <Button
+              size="icon"
+              onClick={handleSend}
+              disabled={!input.trim() || loading || ticketCreated}
+            >
+              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+            </Button>
+          </div>
+
+          {ticketCreated && (
+            <DialogFooter className="gap-2">
+              <Button variant="outline" onClick={() => setOpen(false)}>
+                Fechar
               </Button>
-            )}
-            {isLastStep && step < steps.length && (
-              <Button
-                variant="outline"
-                onClick={() => setStep(steps.length)}
-                disabled={loading}
-              >
-                Revisar
+              <Button onClick={openInOpenWebUI}>
+                <ExternalLink className="h-4 w-4 mr-2" />
+                Abrir no Open WebUI
               </Button>
-            )}
-            {step < steps.length && !isLastStep && (
-              <Button onClick={() => setStep((s) => s + 1)} disabled={loading}>
-                Próximo
-              </Button>
-            )}
-            {step >= steps.length && (
-              <Button onClick={handleSubmit} disabled={loading}>
-                {loading ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                    Criando...
-                  </>
-                ) : (
-                  `Criar Ticket`
-                )}
-              </Button>
-            )}
-          </DialogFooter>
+            </DialogFooter>
+          )}
         </DialogContent>
       </Dialog>
     </>
