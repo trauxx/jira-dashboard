@@ -12,58 +12,42 @@ async function getOwuToken(): Promise<string> {
       password: "odranoeL6@",
     }),
   });
-
-  if (!res.ok) {
-    throw new Error("Falha ao autenticar no Open WebUI");
-  }
-
-  const data = await res.json();
-  return data.token;
+  if (!res.ok) throw new Error("Falha ao autenticar no Open WebUI");
+  return (await res.json()).token;
 }
 
 function parseSSE(body: string): string {
   let content = "";
-  const lines = body.split("\n");
-  for (const line of lines) {
+  for (const line of body.split("\n")) {
     const trimmed = line.trim();
     if (!trimmed.startsWith("data: ")) continue;
-    const jsonStr = trimmed.slice(6);
-    if (jsonStr === "[DONE]") break;
+    const raw = trimmed.slice(6);
+    if (raw === "[DONE]") break;
     try {
-      const chunk = JSON.parse(jsonStr);
-      const delta = chunk.choices?.[0]?.delta?.content;
+      const delta = JSON.parse(raw).choices?.[0]?.delta?.content;
       if (delta) content += delta;
     } catch {
-      continue;
+      /* skip invalid chunks */
     }
   }
-  return content;
+  return content.trim();
 }
 
 export async function POST(req: Request) {
   try {
     const { messages } = await req.json();
-
-    if (!messages || !Array.isArray(messages) || messages.length === 0) {
-      return NextResponse.json(
-        { error: "Mensagens são obrigatórias" },
-        { status: 400 },
-      );
+    if (!messages?.length) {
+      return NextResponse.json({ error: "Mensagens são obrigatórias" }, { status: 400 });
     }
 
     const token = await getOwuToken();
-
     const res = await fetch(OWU_URL, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        model: OWU_BASE_MODEL,
-        messages,
-        stream: false,
-      }),
+      body: JSON.stringify({ model: OWU_BASE_MODEL, messages, stream: false }),
     });
 
     if (!res.ok) {
@@ -74,19 +58,16 @@ export async function POST(req: Request) {
       );
     }
 
-    const rawBody = await res.text();
-    const reply = parseSSE(rawBody);
-
+    const reply = parseSSE(await res.text());
     if (!reply) {
-      return NextResponse.json(
-        { error: "Resposta vazia do Open WebUI", raw: rawBody.slice(0, 300) },
-        { status: 502 },
-      );
+      return NextResponse.json({ error: "Resposta vazia do Open WebUI" }, { status: 502 });
     }
 
     return NextResponse.json({ message: reply });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Erro inesperado";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Erro inesperado" },
+      { status: 500 },
+    );
   }
 }

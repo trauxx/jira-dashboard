@@ -20,11 +20,36 @@ interface Props {
   company: string;
 }
 
-const TICKET_LABEL = (company: string) => company === "ISA" ? "ISA" : "MB";
+const TICKET_LABEL = (company: string) => (company === "ISA" ? "ISA" : "MB");
 
 interface Message {
   role: "user" | "assistant";
   content: string;
+}
+
+function extractJSON(text: string): Record<string, string> | null {
+  const jsonMatch = text.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/);
+  const jsonStr = jsonMatch ? jsonMatch[1] : text;
+  try {
+    return JSON.parse(jsonStr);
+  } catch {
+    return null;
+  }
+}
+
+function buildTicketDescription(data: Record<string, string>): string {
+  return [
+    data.descricao || "",
+    data.produto ? `\n\n**Produto:** ${data.produto}` : "",
+    data.empresa ? `**Empresa:** ${data.empresa}` : "",
+    data.passo_a_passo ? `**Passo a passo:**\n${data.passo_a_passo}` : "",
+    data.quando ? `**Quando:** ${data.quando}` : "",
+    data.usuario ? `**Usuário/PDV:** ${data.usuario}` : "",
+    data.tipo ? `**Tipo:** ${data.tipo}` : "",
+    data.prioridade ? `**Prioridade:** ${data.prioridade}` : "",
+  ]
+    .filter(Boolean)
+    .join("\n");
 }
 
 export default function TicketCreator({ config, company }: Props) {
@@ -41,7 +66,7 @@ export default function TicketCreator({ config, company }: Props) {
       setMessages([
         {
           role: "assistant",
-          content: `Olá! 👋 Descreva o problema ou solicitação que você quer registrar. Pode incluir o que souber — título, descrição, produto, etc. Se faltar alguma informação, eu vou te perguntando aos poucos.`,
+          content: `Olá! 👋 O que você precisa registrar? Pode ser um **bug**, uma **melhoria** ou uma **nova funcionalidade**. Conte o que você precisa.`,
         },
       ]);
       setTicketCreated(false);
@@ -58,39 +83,53 @@ export default function TicketCreator({ config, company }: Props) {
     const text = input.trim();
     if (!text || loading) return;
 
-    setMessages((prev) => [...prev, { role: "user", content: text }]);
+    const updatedMessages = [...messages, { role: "user" as const, content: text }];
+    setMessages(updatedMessages);
     setInput("");
     setLoading(true);
 
     try {
-      const allMessages = [...messages, { role: "user" as const, content: text }];
-      const conversation = allMessages
-        .map((m) => `${m.role === "user" ? "Usuario" : "Sistema"}: ${m.content}`)
-        .join("\n\n");
-
       const label = TICKET_LABEL(company);
-      const systemPrompt = `Você é um assistente de criação de tickets Jira. 
+      const isIsa = company === "ISA";
 
-Seguindo o template abaixo, colete as informações que faltam perguntando uma de cada vez.
+      const systemPrompt = `Você é um assistente de criação de tickets Jira.
 
-## TEMPLATE PADRÃO
-- Produto(s): [qual produto? qual repositório? Ex: site, PDV, app, API, painel]
-- Empresa: [ISA ou qualquer outra]
-- Ambiente: [produção, homologação, desenvolvimento]
+## REGRAS INICIAIS
+- Pergunte primeiro se é **bug**, **melhoria** ou **nova funcionalidade**.
+- Se for **bug**, siga o template de bug abaixo.
+- Se for **melhoria** ou **nova funcionalidade**, siga o template de melhoria/feature abaixo.
+- Ambiente é sempre **produção** — não pergunte sobre ambiente.
+
+## LABEL
+A label será "${label}".${isIsa ? "" : "\n- Se o usuário estiver na página MB, pergunte se é MB ou outra empresa."}
+
+## TEMPLATE BUG
+- Produto(s): [qual produto? qual repositório?]
+${isIsa ? "" : "- Empresa: [MB ou outra empresa?]"}
 - Descrição: [o que acontece?]
 - Passo a passo: [como reproduzir?]
-- Quando aconteceu: [desde quando? em que circunstâncias?]
+- Quando aconteceu: [desde quando?]
 - Usuário/PDV afetado: [quem? opcional]
-- Tipo: [Bug, Task, Story, Melhoria]
 - Prioridade: [Baixa, Média, Alta, Crítica]
 
-## REGRAS
-- Se o usuário já forneceu informações suficientes, confirme o resumo e peça autorização.
-- Se faltar algo, pergunte APENAS UMA coisa por vez.
-- Seja direto e objetivo em português.
-- Quando autorizado, responda exatamente: CRIAR_TICKET seguido de um JSON válido com os campos: summary, descricao, produto, empresa, ambiente, passo_a_passo, quando, usuario, tipo, prioridade.
-- Use a label "${label}" para o ticket.
-- Empresa "ISA" → label ISA. Qualquer outra → label MB.`;
+## TEMPLATE MELHORIA / NOVA FUNCIONALIDADE
+- Produto(s): [qual produto? qual repositório?]
+${isIsa ? "" : "- Empresa: [MB ou outra empresa?]"}
+- Descrição: [o que é a melhoria/feature?]
+- Benefício esperado: [qual o ganho?]
+- Público afetado: [quem será impactado?]
+- Prioridade: [Baixa, Média, Alta, Crítica]
+
+## REGRAS GERAIS
+- Uma pergunta de cada vez.
+- Se o usuário já forneceu informações suficientes, mostre o resumo e peça autorização.
+- Quando autorizado, responda apenas: CRIAR_TICKET seguido de um JSON válido SEM markdown, com estes campos:
+  - obrigatórios: summary, descricao, produto${isIsa ? "" : ", empresa"}, tipo, prioridade
+  - bug: passo_a_passo, quando
+  - usuario (opcional)
+  - melhoria/feature: beneficio, publico_afetado
+- NÃO use \`\`\`json — retorne apenas CRIAR_TICKET { ... }.
+- Seja direto e responda em português.`;
 
       const res = await fetch("/api/jira/chat", {
         method: "POST",
@@ -98,26 +137,30 @@ Seguindo o template abaixo, colete as informações que faltam perguntando uma d
         body: JSON.stringify({
           messages: [
             { role: "system", content: systemPrompt },
-            ...allMessages,
+            ...updatedMessages,
           ],
         }),
       });
 
       const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Erro ao processar");
 
-      if (!res.ok) {
-        throw new Error(data.error || "Erro ao processar");
-      }
-
-      const reply = data.message || data.response || "Entendi, pode me contar mais?";
+      const reply = (data.message || "").trim();
 
       if (reply.startsWith("CRIAR_TICKET")) {
-        const jsonStr = reply.replace("CRIAR_TICKET", "").trim();
-        let ticketData: Record<string, string> = {};
-        try {
-          ticketData = JSON.parse(jsonStr);
-        } catch {
-          ticketData = { summary: text };
+        const jsonPart = reply.replace(/^CRIAR_TICKET\s*/, "").trim();
+        const ticketData = extractJSON(jsonPart);
+
+        if (!ticketData) {
+          setMessages((prev) => [
+            ...prev,
+            {
+              role: "assistant",
+              content: `❌ Erro ao interpretar os dados do ticket. Tente novamente.\n\nResposta recebida:\n${reply}`,
+            },
+          ]);
+          setLoading(false);
+          return;
         }
 
         const createRes = await fetch("/api/jira/issues", {
@@ -125,28 +168,25 @@ Seguindo o template abaixo, colete as informações que faltam perguntando uma d
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             summary: ticketData.summary || text.slice(0, 80),
-            description: [
-              ticketData.descricao || text,
-              ticketData.produto ? `\n\n**Produto:** ${ticketData.produto}` : "",
-              ticketData.empresa ? `**Empresa:** ${ticketData.empresa}` : "",
-              ticketData.ambiente ? `**Ambiente:** ${ticketData.ambiente}` : "",
-              ticketData.passo_a_passo ? `**Passo a passo:**\n${ticketData.passo_a_passo}` : "",
-              ticketData.quando ? `**Quando:** ${ticketData.quando}` : "",
-              ticketData.usuario ? `**Usuário/PDV:** ${ticketData.usuario}` : "",
-            ].filter(Boolean).join("\n"),
-            projectKey: TICKET_LABEL(company) === "ISA" ? "ISA" : "MB",
-            issueType: ticketData.tipo || "Task",
-            priority: ticketData.prioridade || "Medium",
-            labels: [TICKET_LABEL(company)],
+            description: buildTicketDescription(ticketData),
+            projectKey: isIsa ? "ISA" : "MB",
+            issueType: ticketData.tipo === "bug" || ticketData.tipo?.toLowerCase() === "bug"
+              ? "Bug"
+              : ticketData.tipo === "melhoria"
+              ? "Story"
+              : "Task",
+            priority: ticketData.prioridade === "Crítica" || ticketData.prioridade === "Alta"
+              ? "High"
+              : ticketData.prioridade === "Média"
+              ? "Medium"
+              : "Low",
+            labels: [label],
             config,
           }),
         });
 
         const createData = await createRes.json();
-
-        if (!createRes.ok) {
-          throw new Error(createData.error || "Erro ao criar ticket");
-        }
+        if (!createRes.ok) throw new Error(createData.error || "Erro ao criar ticket");
 
         setMessages((prev) => [
           ...prev,
@@ -163,10 +203,7 @@ Seguindo o template abaixo, colete as informações que faltam perguntando uma d
     } catch (err: any) {
       setMessages((prev) => [
         ...prev,
-        {
-          role: "assistant",
-          content: `❌ Erro: ${err.message}`,
-        },
+        { role: "assistant", content: `❌ Erro: ${err.message}` },
       ]);
     } finally {
       setLoading(false);
@@ -182,11 +219,12 @@ Seguindo o template abaixo, colete as informações que faltam perguntando uma d
 
   const openInOpenWebUI = () => {
     const baseUrl = "http://44.195.169.137:3000";
-    const modelId = "jira-creator";
-    const prompt = encodeURIComponent(
-      `Criar um ticket para ${company} sobre: ${messages.find((m) => m.role === "user")?.content || ""}`
+    window.open(
+      `${baseUrl}/?model=jira-ticket-bot&prompt=${encodeURIComponent(
+        `Criar ticket para ${company}: ${messages.find((m) => m.role === "user")?.content || ""}`
+      )}`,
+      "_blank"
     );
-    window.open(`${baseUrl}/?model=${modelId}&prompt=${prompt}`, "_blank");
   };
 
   return (
@@ -201,7 +239,7 @@ Seguindo o template abaixo, colete as informações que faltam perguntando uma d
           <DialogHeader>
             <DialogTitle>Novo Ticket</DialogTitle>
             <DialogDescription>
-              Conte o que precisa e eu vou te ajudando a criar o ticket.
+              Conte o que precisa. Se faltar informação, eu pergunto.
             </DialogDescription>
           </DialogHeader>
 
@@ -225,7 +263,7 @@ Seguindo o template abaixo, colete as informações que faltam perguntando uma d
                 >
                   {msg.content}
                   {ticketCreated && msg.role === "assistant" && i === messages.length - 1 && (
-                    <div className="mt-2 flex gap-2">
+                    <div className="mt-2">
                       <a
                         href={ticketUrl}
                         target="_blank"
@@ -253,7 +291,7 @@ Seguindo o template abaixo, colete as informações que faltam perguntando uma d
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Descreva o problema ou solicitação..."
+              placeholder="Descreva o que precisa..."
               rows={2}
               className="resize-none"
               disabled={loading || ticketCreated}
