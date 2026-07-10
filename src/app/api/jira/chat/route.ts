@@ -25,7 +25,9 @@ function parseSSE(body: string): string {
     if (raw === "[DONE]") break;
     try {
       const delta = JSON.parse(raw).choices?.[0]?.delta?.content;
-      if (delta) content += delta;
+      if (!delta) continue;
+      if (/Pensando/i.test(delta) && delta.length < 50) continue;
+      content += delta;
     } catch {
       /* skip invalid chunks */
     }

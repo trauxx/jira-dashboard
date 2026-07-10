@@ -101,7 +101,7 @@ export default function TicketCreator({ config, company }: Props) {
 - Ambiente é sempre **produção** — não pergunte sobre ambiente.
 
 ## LABEL
-A label será "${label}".${isIsa ? "" : "\n- Se o usuário estiver na página MB, pergunte se é MB ou outra empresa."}
+A label do ticket será "${label}" (definida pela pagina).${isIsa ? "" : "\n- Pergunte apenas para registro: e MB ou outra empresa?"}
 
 ## TEMPLATE BUG
 - Produto(s): [qual produto? qual repositório?]
@@ -147,8 +147,8 @@ ${isIsa ? "" : "- Empresa: [MB ou outra empresa?]"}
 
       const reply = (data.message || "").trim();
 
-      if (reply.startsWith("CRIAR_TICKET")) {
-        const jsonPart = reply.replace(/^CRIAR_TICKET\s*/, "").trim();
+      if (reply.includes("CRIAR_TICKET")) {
+        const jsonPart = reply.replace(/.*CRIAR_TICKET\s*/, "").trim();
         const ticketData = extractJSON(jsonPart);
 
         if (!ticketData) {
