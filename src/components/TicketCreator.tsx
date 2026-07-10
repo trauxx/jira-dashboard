@@ -28,6 +28,7 @@ export default function TicketCreator({ company }: Props) {
   const [loading, setLoading] = useState(false);
   const [ticketUrl, setTicketUrl] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     if (open) {
@@ -110,6 +111,7 @@ Responda em português.`;
       setMessages((prev) => [...prev, { role: "assistant", content: `❌ ${err.message}` }]);
     } finally {
       setLoading(false);
+      setTimeout(() => inputRef.current?.focus(), 50);
     }
   };
 
@@ -157,6 +159,7 @@ Responda em português.`;
 
           <div className="flex items-end gap-2 border-t pt-3">
             <Textarea
+              ref={inputRef}
               value={input} onChange={(e) => setInput(e.target.value)}
               placeholder="Descreva o que precisa..." rows={2} className="resize-none"
               disabled={loading || !!ticketUrl}
