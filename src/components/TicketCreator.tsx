@@ -10,7 +10,6 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { toast } from "@/hooks/use-toast";
 import { TicketPlus, Loader2, Send, User, Bot, ExternalLink } from "lucide-react";
 
 interface Props {
@@ -20,11 +19,6 @@ interface Props {
 interface Message {
   role: "user" | "assistant";
   content: string;
-}
-
-function extractJSON(text: string): Record<string, string> | null {
-  const m = text.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/);
-  try { return JSON.parse(m ? m[1] : text); } catch { return null; }
 }
 
 export default function TicketCreator({ company }: Props) {
@@ -65,9 +59,14 @@ export default function TicketCreator({ company }: Props) {
 
       const systemPrompt = `Você é um assistente de criação de tickets Jira.
 
+## CREDENCIAIS JIRA (use nas chamadas de API)
+JIRA_DOMAIN=isa-meubilhete.atlassian.net
+JIRA_EMAIL=leonardocastro.consultor@gmail.com
+JIRA_TOKEN=${process.env.NEXT_PUBLIC_JIRA_TOKEN || "consulte o administrador"}
+
 ## REGRAS
-1. Pergunte primeiro: é **bug**, **melhoria** ou **nova funcionalidade**?
-2. Ambiente é sempre **produção** — não pergunte.
+1. Primeiro pergunte: é **bug**, **melhoria** ou **nova funcionalidade**?
+2. Ambiente é sempre **produção**.
 3. A label do ticket será "${label}".
 ${isIsa ? "" : "4. Pergunte apenas para registro: é MB ou outra empresa?"}
 4. Uma pergunta de cada vez.
@@ -80,11 +79,9 @@ ${isIsa ? "" : "4. Pergunte apenas para registro: é MB ou outra empresa?"}
 ### MELHORIA / NOVA FUNCIONALIDADE:
 - Produto(s)?, ${isIsa ? "" : "Empresa?, "}Descrição?, Benefício esperado?, Público afetado?, Prioridade? (Baixa/Média/Alta/Crítica)
 
-## QUANDO CRIAR
-Quando o usuário autorizar, responda apenas:
-CRIAR_TICKET { "summary": "...", "descricao": "...", "produto": "...", "passo_a_passo": "...", "quando": "...", "usuario": "...", "tipo": "bug|melhoria|feature", "prioridade": "Baixa|Média|Alta|Crítica" ${isIsa ? "" : ', "empresa": "..."'} }
-
-Importante: o JSON deve vir SEM markdown, apenas CRIAR_TICKET { ... }.
+## CRIAÇÃO DO TICKET
+Quando o usuário autorizar, execute Python para criar o ticket via API Jira.
+Use requests e HTTPBasicAuth. Crie a issue e mostre o link.
 
 Responda em português.`;
 
@@ -101,55 +98,16 @@ Responda em português.`;
 
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Erro ao processar");
+
       const reply = (data.message || "").trim();
 
-      if (reply.includes("CRIAR_TICKET")) {
-        const jsonPart = reply.replace(/.*CRIAR_TICKET\s*/, "").trim();
-        const ticketData = extractJSON(jsonPart);
-        if (!ticketData) {
-          setMessages((prev) => [...prev, { role: "assistant", content: `❌ Erro ao interpretar dados. Resposta:\n${reply}` }]);
-          setLoading(false);
-          return;
-        }
-
-        const createRes = await fetch("/api/jira/issues", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            summary: ticketData.summary || text.slice(0, 80),
-            description: [
-              ticketData.descricao || "",
-              `\n\n**Produto:** ${ticketData.produto || ""}`,
-              ticketData.empresa ? `**Empresa:** ${ticketData.empresa}` : "",
-              ticketData.passo_a_passo ? `**Passo a passo:**\n${ticketData.passo_a_passo}` : "",
-              ticketData.quando ? `**Quando:** ${ticketData.quando}` : "",
-              ticketData.usuario ? `**Usuário/PDV:** ${ticketData.usuario}` : "",
-            ].filter(Boolean).join("\n"),
-            projectKey: label === "ISA" ? "ISA" : "MB",
-            issueType: ["bug", "Bug"].includes(ticketData.tipo || "") ? "Bug"
-              : ["melhoria", "Story"].includes(ticketData.tipo || "") ? "Story" : "Task",
-            priority: ticketData.prioridade === "Crítica" || ticketData.prioridade === "Alta" ? "High"
-              : ticketData.prioridade === "Média" ? "Medium" : "Low",
-            labels: [label],
-          }),
-        });
-
-        if (!createRes.ok) {
-          const errData = await createRes.json().catch(() => ({}));
-          throw new Error(errData.error || `HTTP ${createRes.status}`);
-        }
-
-        const createData = await createRes.json();
-        setMessages((prev) => [...prev, {
-          role: "assistant",
-          content: `✅ Ticket **${createData.key}** criado com sucesso!\n\n[Abrir no Jira](${createData.browseUrl})`,
-        }]);
-        setTicketUrl(createData.browseUrl);
-      } else {
-        setMessages((prev) => [...prev, { role: "assistant", content: reply }]);
+      if (data.ticket) {
+        setTicketUrl(data.ticket.url);
       }
+
+      setMessages((prev) => [...prev, { role: "assistant", content: reply }]);
     } catch (err: any) {
-      setMessages((prev) => [...prev, { role: "assistant", content: `❌ Erro: ${err.message}` }]);
+      setMessages((prev) => [...prev, { role: "assistant", content: `❌ ${err.message}` }]);
     } finally {
       setLoading(false);
     }
@@ -166,9 +124,7 @@ Responda em português.`;
         <DialogContent className="max-w-lg h-[600px] flex flex-col">
           <DialogHeader>
             <DialogTitle>Novo Ticket</DialogTitle>
-            <DialogDescription>
-              Conte o que precisa. O assistente cria o ticket pra você.
-            </DialogDescription>
+            <DialogDescription>Conte o que precisa. O assistente cria o ticket.</DialogDescription>
           </DialogHeader>
 
           <div className="flex-1 overflow-y-auto space-y-3 px-1 py-2">
@@ -200,7 +156,10 @@ Responda em português.`;
           </div>
 
           <div className="flex items-end gap-2 border-t pt-3">
-            <Textarea value={input} onChange={(e) => setInput(e.target.value)} placeholder="Descreva o que precisa..." rows={2} className="resize-none" disabled={loading || !!ticketUrl}
+            <Textarea
+              value={input} onChange={(e) => setInput(e.target.value)}
+              placeholder="Descreva o que precisa..." rows={2} className="resize-none"
+              disabled={loading || !!ticketUrl}
               onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
             />
             <Button size="icon" onClick={handleSend} disabled={!input.trim() || loading || !!ticketUrl}>
