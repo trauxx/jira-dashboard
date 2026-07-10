@@ -52,11 +52,15 @@ async function createJiraIssue(data: Record<string, string>, label: string) {
 
   const descParts = [
     data.descricao,
-    data.produto ? `\n\n**Produto:** ${data.produto}` : "",
+    data.produto ? `\n\n---\n**Produto:** ${data.produto}` : "",
     data.empresa ? `**Empresa:** ${data.empresa}` : "",
-    data.passo_a_passo ? `\n**Passo a passo:**\n${data.passo_a_passo}` : "",
-    data.quando ? `\n**Quando:** ${data.quando}` : "",
-    data.usuario ? `\n**Usuário/PDV:** ${data.usuario}` : "",
+    data.comportamento_esperado ? `\n**Comportamento esperado:**\n${data.comportamento_esperado}` : "",
+    data.comportamento_atual ? `\n**Comportamento atual:**\n${data.comportamento_atual}` : "",
+    data.passo_a_passo ? `\n**Passo a passo para reproduzir:**\n${data.passo_a_passo}` : "",
+    data.quando ? `\n**Quando começou:** ${data.quando}` : "",
+    data.usuario ? `\n**Usuário/PDV afetado:** ${data.usuario}` : "",
+    data.criterios_aceite ? `\n\n---\n## Critérios de Aceite\n${data.criterios_aceite}` : "",
+    data.dod ? `\n\n## Definition of Done\n${data.dod}` : "",
   ];
   const descText = descParts.filter(Boolean).join("\n");
 
