@@ -6,6 +6,7 @@ import { useJiraBoard, clearConfig } from "@/hooks/useJiraBoard";
 import BoardColumnComponent from "./BoardColumn";
 import { Button } from "@/components/ui/button";
 import { RefreshCw, LogOut, Loader2 } from "lucide-react";
+import TicketCreator from "./TicketCreator";
 import {
   Select,
   SelectContent,
@@ -310,6 +311,7 @@ export default function SprintBoard({ config, onLogout, company }: Props) {
                 </SelectContent>
               </Select>
             )}
+            <TicketCreator config={config} company={company ?? "SYSTEM"} />
             <Button
               variant="ghost"
               size="icon"
