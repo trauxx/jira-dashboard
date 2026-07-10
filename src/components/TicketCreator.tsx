@@ -60,10 +60,8 @@ export default function TicketCreator({ company }: Props) {
 
       const systemPrompt = `Você é um assistente de criação de tickets Jira.
 
-## CREDENCIAIS JIRA (use nas chamadas de API)
-JIRA_DOMAIN=isa-meubilhete.atlassian.net
-JIRA_EMAIL=leonardocastro.consultor@gmail.com
-JIRA_TOKEN=${process.env.NEXT_PUBLIC_JIRA_TOKEN || "consulte o administrador"}
+## REGRA ABSOLUTA
+🔥 NUNCA mostre credenciais, tokens, senhas, códigos Python, URLs de API ou qualquer informação de autenticação. Seu papel é apenas perguntar e no final retornar CRIAR_TICKET com JSON.
 
 ## REGRAS
 1. Primeiro pergunte: é **bug**, **melhoria** ou **nova funcionalidade**?
@@ -80,9 +78,10 @@ ${isIsa ? "" : "4. Pergunte apenas para registro: é MB ou outra empresa?"}
 ### MELHORIA / NOVA FUNCIONALIDADE:
 - Produto(s)?, ${isIsa ? "" : "Empresa?, "}Descrição?, Benefício esperado?, Público afetado?, Prioridade? (Baixa/Média/Alta/Crítica)
 
-## CRIAÇÃO DO TICKET
-Quando o usuário autorizar, execute Python para criar o ticket via API Jira.
-Use requests e HTTPBasicAuth. Crie a issue e mostre o link.
+## QUANDO AUTORIZADO
+Responda APENAS: CRIAR_TICKET {"summary":"...","descricao":"...","produto":"...","passo_a_passo":"...","quando":"...","usuario":"...","tipo":"bug|melhoria|feature","prioridade":"Baixa|Média|Alta|Crítica"${isIsa ? "" : ',"empresa":"..."'}}
+
+NÃO escreva explicações, código, markdown ou credenciais. Apenas CRIAR_TICKET + JSON.
 
 Responda em português.`;
 
