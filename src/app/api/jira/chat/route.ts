@@ -21,6 +21,25 @@ async function getOwuToken(): Promise<string> {
   return data.token;
 }
 
+function parseSSE(body: string): string {
+  let content = "";
+  const lines = body.split("\n");
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed.startsWith("data: ")) continue;
+    const jsonStr = trimmed.slice(6);
+    if (jsonStr === "[DONE]") break;
+    try {
+      const chunk = JSON.parse(jsonStr);
+      const delta = chunk.choices?.[0]?.delta?.content;
+      if (delta) content += delta;
+    } catch {
+      continue;
+    }
+  }
+  return content;
+}
+
 export async function POST(req: Request) {
   try {
     const { messages } = await req.json();
@@ -55,8 +74,15 @@ export async function POST(req: Request) {
       );
     }
 
-    const data = await res.json();
-    const reply = data.choices?.[0]?.message?.content || "";
+    const rawBody = await res.text();
+    const reply = parseSSE(rawBody);
+
+    if (!reply) {
+      return NextResponse.json(
+        { error: "Resposta vazia do Open WebUI", raw: rawBody.slice(0, 300) },
+        { status: 502 },
+      );
+    }
 
     return NextResponse.json({ message: reply });
   } catch (error) {
