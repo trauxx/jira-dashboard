@@ -311,7 +311,7 @@ export default function SprintBoard({ config, onLogout, company }: Props) {
                 </SelectContent>
               </Select>
             )}
-            <TicketCreator config={config} company={company ?? "SYSTEM"} />
+            <TicketCreator company={company ?? "SYSTEM"} />
             <Button
               variant="ghost"
               size="icon"

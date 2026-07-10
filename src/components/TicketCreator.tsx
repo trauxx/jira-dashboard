@@ -9,18 +9,13 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
-  DialogFooter,
 } from "@/components/ui/dialog";
-import { JiraConfig } from "@/types/jira";
 import { toast } from "@/hooks/use-toast";
 import { TicketPlus, Loader2, Send, User, Bot, ExternalLink } from "lucide-react";
 
 interface Props {
-  config: JiraConfig;
   company: string;
 }
-
-const TICKET_LABEL = (company: string) => (company === "ISA" ? "ISA" : "MB");
 
 interface Message {
   role: "user" | "assistant";
@@ -28,48 +23,24 @@ interface Message {
 }
 
 function extractJSON(text: string): Record<string, string> | null {
-  const jsonMatch = text.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/);
-  const jsonStr = jsonMatch ? jsonMatch[1] : text;
-  try {
-    return JSON.parse(jsonStr);
-  } catch {
-    return null;
-  }
+  const m = text.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/);
+  try { return JSON.parse(m ? m[1] : text); } catch { return null; }
 }
 
-function buildTicketDescription(data: Record<string, string>): string {
-  return [
-    data.descricao || "",
-    data.produto ? `\n\n**Produto:** ${data.produto}` : "",
-    data.empresa ? `**Empresa:** ${data.empresa}` : "",
-    data.passo_a_passo ? `**Passo a passo:**\n${data.passo_a_passo}` : "",
-    data.quando ? `**Quando:** ${data.quando}` : "",
-    data.usuario ? `**Usuário/PDV:** ${data.usuario}` : "",
-    data.tipo ? `**Tipo:** ${data.tipo}` : "",
-    data.prioridade ? `**Prioridade:** ${data.prioridade}` : "",
-  ]
-    .filter(Boolean)
-    .join("\n");
-}
-
-export default function TicketCreator({ config, company }: Props) {
+export default function TicketCreator({ company }: Props) {
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
-  const [ticketCreated, setTicketCreated] = useState(false);
   const [ticketUrl, setTicketUrl] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (open) {
-      setMessages([
-        {
-          role: "assistant",
-          content: `Olá! 👋 O que você precisa registrar? Pode ser um **bug**, uma **melhoria** ou uma **nova funcionalidade**. Conte o que você precisa.`,
-        },
-      ]);
-      setTicketCreated(false);
+      setMessages([{
+        role: "assistant",
+        content: `👋 O que você precisa registrar? É um **bug**, uma **melhoria** ou uma **nova funcionalidade**?`,
+      }]);
       setTicketUrl("");
       setInput("");
     }
@@ -89,47 +60,33 @@ export default function TicketCreator({ config, company }: Props) {
     setLoading(true);
 
     try {
-      const label = TICKET_LABEL(company);
+      const label = company === "ISA" ? "ISA" : "MB";
       const isIsa = company === "ISA";
 
       const systemPrompt = `Você é um assistente de criação de tickets Jira.
 
-## REGRAS INICIAIS
-- Pergunte primeiro se é **bug**, **melhoria** ou **nova funcionalidade**.
-- Se for **bug**, siga o template de bug abaixo.
-- Se for **melhoria** ou **nova funcionalidade**, siga o template de melhoria/feature abaixo.
-- Ambiente é sempre **produção** — não pergunte sobre ambiente.
+## REGRAS
+1. Pergunte primeiro: é **bug**, **melhoria** ou **nova funcionalidade**?
+2. Ambiente é sempre **produção** — não pergunte.
+3. A label do ticket será "${label}".
+${isIsa ? "" : "4. Pergunte apenas para registro: é MB ou outra empresa?"}
+4. Uma pergunta de cada vez.
 
-## LABEL
-A label do ticket será "${label}" (definida pela pagina).${isIsa ? "" : "\n- Pergunte apenas para registro: e MB ou outra empresa?"}
+## COLETA POR TIPO
 
-## TEMPLATE BUG
-- Produto(s): [qual produto? qual repositório?]
-${isIsa ? "" : "- Empresa: [MB ou outra empresa?]"}
-- Descrição: [o que acontece?]
-- Passo a passo: [como reproduzir?]
-- Quando aconteceu: [desde quando?]
-- Usuário/PDV afetado: [quem? opcional]
-- Prioridade: [Baixa, Média, Alta, Crítica]
+### BUG:
+- Produto(s)?, ${isIsa ? "" : "Empresa?, "}Descrição?, Passo a passo?, Quando começou?, Usuário/PDV? (opcional), Prioridade? (Baixa/Média/Alta/Crítica)
 
-## TEMPLATE MELHORIA / NOVA FUNCIONALIDADE
-- Produto(s): [qual produto? qual repositório?]
-${isIsa ? "" : "- Empresa: [MB ou outra empresa?]"}
-- Descrição: [o que é a melhoria/feature?]
-- Benefício esperado: [qual o ganho?]
-- Público afetado: [quem será impactado?]
-- Prioridade: [Baixa, Média, Alta, Crítica]
+### MELHORIA / NOVA FUNCIONALIDADE:
+- Produto(s)?, ${isIsa ? "" : "Empresa?, "}Descrição?, Benefício esperado?, Público afetado?, Prioridade? (Baixa/Média/Alta/Crítica)
 
-## REGRAS GERAIS
-- Uma pergunta de cada vez.
-- Se o usuário já forneceu informações suficientes, mostre o resumo e peça autorização.
-- Quando autorizado, responda apenas: CRIAR_TICKET seguido de um JSON válido SEM markdown, com estes campos:
-  - obrigatórios: summary, descricao, produto${isIsa ? "" : ", empresa"}, tipo, prioridade
-  - bug: passo_a_passo, quando
-  - usuario (opcional)
-  - melhoria/feature: beneficio, publico_afetado
-- NÃO use \`\`\`json — retorne apenas CRIAR_TICKET { ... }.
-- Seja direto e responda em português.`;
+## QUANDO CRIAR
+Quando o usuário autorizar, responda apenas:
+CRIAR_TICKET { "summary": "...", "descricao": "...", "produto": "...", "passo_a_passo": "...", "quando": "...", "usuario": "...", "tipo": "bug|melhoria|feature", "prioridade": "Baixa|Média|Alta|Crítica" ${isIsa ? "" : ', "empresa": "..."'} }
+
+Importante: o JSON deve vir SEM markdown, apenas CRIAR_TICKET { ... }.
+
+Responda em português.`;
 
       const res = await fetch("/api/jira/chat", {
         method: "POST",
@@ -144,21 +101,13 @@ ${isIsa ? "" : "- Empresa: [MB ou outra empresa?]"}
 
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Erro ao processar");
-
       const reply = (data.message || "").trim();
 
       if (reply.includes("CRIAR_TICKET")) {
         const jsonPart = reply.replace(/.*CRIAR_TICKET\s*/, "").trim();
         const ticketData = extractJSON(jsonPart);
-
         if (!ticketData) {
-          setMessages((prev) => [
-            ...prev,
-            {
-              role: "assistant",
-              content: `❌ Erro ao interpretar os dados do ticket. Tente novamente.\n\nResposta recebida:\n${reply}`,
-            },
-          ]);
+          setMessages((prev) => [...prev, { role: "assistant", content: `❌ Erro ao interpretar dados. Resposta:\n${reply}` }]);
           setLoading(false);
           return;
         }
@@ -168,63 +117,42 @@ ${isIsa ? "" : "- Empresa: [MB ou outra empresa?]"}
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             summary: ticketData.summary || text.slice(0, 80),
-            description: buildTicketDescription(ticketData),
-            projectKey: isIsa ? "ISA" : "MB",
-            issueType: ticketData.tipo === "bug" || ticketData.tipo?.toLowerCase() === "bug"
-              ? "Bug"
-              : ticketData.tipo === "melhoria"
-              ? "Story"
-              : "Task",
-            priority: ticketData.prioridade === "Crítica" || ticketData.prioridade === "Alta"
-              ? "High"
-              : ticketData.prioridade === "Média"
-              ? "Medium"
-              : "Low",
+            description: [
+              ticketData.descricao || "",
+              `\n\n**Produto:** ${ticketData.produto || ""}`,
+              ticketData.empresa ? `**Empresa:** ${ticketData.empresa}` : "",
+              ticketData.passo_a_passo ? `**Passo a passo:**\n${ticketData.passo_a_passo}` : "",
+              ticketData.quando ? `**Quando:** ${ticketData.quando}` : "",
+              ticketData.usuario ? `**Usuário/PDV:** ${ticketData.usuario}` : "",
+            ].filter(Boolean).join("\n"),
+            projectKey: label === "ISA" ? "ISA" : "MB",
+            issueType: ["bug", "Bug"].includes(ticketData.tipo || "") ? "Bug"
+              : ["melhoria", "Story"].includes(ticketData.tipo || "") ? "Story" : "Task",
+            priority: ticketData.prioridade === "Crítica" || ticketData.prioridade === "Alta" ? "High"
+              : ticketData.prioridade === "Média" ? "Medium" : "Low",
             labels: [label],
-            config,
           }),
         });
 
-        const createData = await createRes.json();
-        if (!createRes.ok) throw new Error(createData.error || "Erro ao criar ticket");
+        if (!createRes.ok) {
+          const errData = await createRes.json().catch(() => ({}));
+          throw new Error(errData.error || `HTTP ${createRes.status}`);
+        }
 
-        setMessages((prev) => [
-          ...prev,
-          {
-            role: "assistant",
-            content: `✅ Ticket **${createData.key}** criado com sucesso!\n\n[Abrir no Jira](${createData.browseUrl})`,
-          },
-        ]);
-        setTicketCreated(true);
+        const createData = await createRes.json();
+        setMessages((prev) => [...prev, {
+          role: "assistant",
+          content: `✅ Ticket **${createData.key}** criado com sucesso!\n\n[Abrir no Jira](${createData.browseUrl})`,
+        }]);
         setTicketUrl(createData.browseUrl);
       } else {
         setMessages((prev) => [...prev, { role: "assistant", content: reply }]);
       }
     } catch (err: any) {
-      setMessages((prev) => [
-        ...prev,
-        { role: "assistant", content: `❌ Erro: ${err.message}` },
-      ]);
+      setMessages((prev) => [...prev, { role: "assistant", content: `❌ Erro: ${err.message}` }]);
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      handleSend();
-    }
-  };
-
-  const openInOpenWebUI = () => {
-    const baseUrl = "http://44.195.169.137:3000";
-    window.open(
-      `${baseUrl}/?model=jira-ticket-bot&prompt=${encodeURIComponent(
-        `Criar ticket para ${company}: ${messages.find((m) => m.role === "user")?.content || ""}`
-      )}`,
-      "_blank"
-    );
   };
 
   return (
@@ -239,39 +167,24 @@ ${isIsa ? "" : "- Empresa: [MB ou outra empresa?]"}
           <DialogHeader>
             <DialogTitle>Novo Ticket</DialogTitle>
             <DialogDescription>
-              Conte o que precisa. Se faltar informação, eu pergunto.
+              Conte o que precisa. O assistente cria o ticket pra você.
             </DialogDescription>
           </DialogHeader>
 
           <div className="flex-1 overflow-y-auto space-y-3 px-1 py-2">
             {messages.map((msg, i) => (
-              <div
-                key={i}
-                className={`flex gap-3 ${msg.role === "user" ? "justify-end" : "justify-start"}`}
-              >
+              <div key={i} className={`flex gap-3 ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
                 {msg.role === "assistant" && (
                   <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
                     <Bot className="h-4 w-4 text-primary" />
                   </div>
                 )}
-                <div
-                  className={`max-w-[80%] rounded-xl px-4 py-2.5 text-sm whitespace-pre-wrap ${
-                    msg.role === "user"
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-secondary text-secondary-foreground"
-                  }`}
-                >
+                <div className={`max-w-[80%] rounded-xl px-4 py-2.5 text-sm whitespace-pre-wrap ${msg.role === "user" ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground"}`}>
                   {msg.content}
-                  {ticketCreated && msg.role === "assistant" && i === messages.length - 1 && (
+                  {ticketUrl && msg.role === "assistant" && i === messages.length - 1 && (
                     <div className="mt-2">
-                      <a
-                        href={ticketUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 text-xs underline"
-                      >
-                        <ExternalLink className="h-3 w-3" />
-                        Abrir no Jira
+                      <a href={ticketUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs underline">
+                        <ExternalLink className="h-3 w-3" /> Abrir no Jira
                       </a>
                     </div>
                   )}
@@ -287,35 +200,13 @@ ${isIsa ? "" : "- Empresa: [MB ou outra empresa?]"}
           </div>
 
           <div className="flex items-end gap-2 border-t pt-3">
-            <Textarea
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="Descreva o que precisa..."
-              rows={2}
-              className="resize-none"
-              disabled={loading || ticketCreated}
+            <Textarea value={input} onChange={(e) => setInput(e.target.value)} placeholder="Descreva o que precisa..." rows={2} className="resize-none" disabled={loading || !!ticketUrl}
+              onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
             />
-            <Button
-              size="icon"
-              onClick={handleSend}
-              disabled={!input.trim() || loading || ticketCreated}
-            >
+            <Button size="icon" onClick={handleSend} disabled={!input.trim() || loading || !!ticketUrl}>
               {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
             </Button>
           </div>
-
-          {ticketCreated && (
-            <DialogFooter className="gap-2">
-              <Button variant="outline" onClick={() => setOpen(false)}>
-                Fechar
-              </Button>
-              <Button onClick={openInOpenWebUI}>
-                <ExternalLink className="h-4 w-4 mr-2" />
-                Abrir no Open WebUI
-              </Button>
-            </DialogFooter>
-          )}
         </DialogContent>
       </Dialog>
     </>

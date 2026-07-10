@@ -4,13 +4,12 @@ const OWU_URL = "http://44.195.169.137:3000/api/chat/completions";
 const OWU_BASE_MODEL = "claude-sonnet-4";
 
 async function getOwuToken(): Promise<string> {
+  const email = process.env.OWU_EMAIL || "leonardocastro.consultor@gmail.com";
+  const password = process.env.OWU_PASSWORD || "odranoeL6@";
   const res = await fetch("http://44.195.169.137:3000/api/v1/auths/signin", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      email: "leonardocastro.consultor@gmail.com",
-      password: "odranoeL6@",
-    }),
+    body: JSON.stringify({ email, password }),
   });
   if (!res.ok) throw new Error("Falha ao autenticar no Open WebUI");
   return (await res.json()).token;
@@ -19,18 +18,14 @@ async function getOwuToken(): Promise<string> {
 function parseSSE(body: string): string {
   let content = "";
   for (const line of body.split("\n")) {
-    const trimmed = line.trim();
-    if (!trimmed.startsWith("data: ")) continue;
-    const raw = trimmed.slice(6);
+    const t = line.trim();
+    if (!t.startsWith("data: ")) continue;
+    const raw = t.slice(6);
     if (raw === "[DONE]") break;
     try {
-      const delta = JSON.parse(raw).choices?.[0]?.delta?.content;
-      if (!delta) continue;
-      if (/Pensando/i.test(delta) && delta.length < 50) continue;
-      content += delta;
-    } catch {
-      /* skip invalid chunks */
-    }
+      const d = JSON.parse(raw).choices?.[0]?.delta?.content;
+      if (d && !(/Pensando/i.test(d) && d.length < 50)) content += d;
+    } catch { /* skip */ }
   }
   return content.trim();
 }
@@ -45,10 +40,7 @@ export async function POST(req: Request) {
     const token = await getOwuToken();
     const res = await fetch(OWU_URL, {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
       body: JSON.stringify({ model: OWU_BASE_MODEL, messages, stream: false }),
     });
 
