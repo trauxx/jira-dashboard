@@ -127,19 +127,19 @@ export async function POST(req: Request) {
     if (!reply) return NextResponse.json({ error: "Resposta vazia" }, { status: 502 });
 
     if (reply.includes("CRIAR_TICKET")) {
-      const jsonPart = reply.replace(/.*CRIAR_TICKET\s*/, "").trim();
+      const jsonPart = reply.replace(/[\s\S]*CRIAR_TICKET\s*/, "").trim();
       const ticketData = extractJSON(jsonPart);
       if (!ticketData) {
         return NextResponse.json({ message: reply });
       }
 
-      const label = messages.find(m => m.role === "system")?.content?.includes('"ISA"') ? "ISA" : "MB";
-      const jira = await createJiraIssue(ticketData, label);
-
-      return NextResponse.json({
-        message: `✅ Ticket **${jira.key}** criado com sucesso!\n\n${jira.url}`,
-        ticket: jira,
-      });
+      try {
+        const label = messages.find(m => m.role === "system")?.content?.includes('"ISA"') ? "ISA" : "MB";
+        const jira = await createJiraIssue(ticketData, label);
+        return NextResponse.json({ message: `✅ Ticket **${jira.key}** criado!\n\n${jira.url}`, ticket: jira });
+      } catch (err: any) {
+        return NextResponse.json({ message: `❌ Erro ao criar ticket: ${err.message}` });
+      }
     }
 
     return NextResponse.json({ message: reply });
