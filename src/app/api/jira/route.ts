@@ -10,7 +10,7 @@ interface JiraConfigPayload {
 
 // Padrões do dashboard (usuário leonardocastro.consultor@gmail.com).
 // O token nunca é hardcoded — repo público; defina JIRA_API_TOKEN no ambiente (Vercel/.env.local).
-const DEFAULT_JIRA_DOMAIN = "isa-meubilhete.atlassian.net";
+const DEFAULT_JIRA_DOMAIN = "traux.atlassian.net";
 const DEFAULT_JIRA_EMAIL = "leonardocastro.consultor@gmail.com";
 const DEFAULT_JIRA_BOARD_ID = "1";
 

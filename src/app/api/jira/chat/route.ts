@@ -36,9 +36,9 @@ function extractJSON(text: string): Record<string, string> | null {
 }
 
 async function createJiraIssue(data: Record<string, string>, label: string) {
-  const domain = process.env.JIRA_DOMAIN || "isa-meubilhete.atlassian.net";
-  const email = process.env.JIRA_EMAIL || "leonardocastro.consultor@gmail.com";
-  const apiToken = process.env.JIRA_API_TOKEN;
+const domain = process.env.JIRA_DOMAIN || "traux.atlassian.net";
+const email = process.env.JIRA_EMAIL || "leonardocastro.consultor@gmail.com";
+const apiToken = process.env.JIRA_API_TOKEN;
 
   if (!apiToken) throw new Error("JIRA_API_TOKEN não configurado no servidor");
 
@@ -66,7 +66,7 @@ async function createJiraIssue(data: Record<string, string>, label: string) {
 
   const payload = {
     fields: {
-      project: { key: "ISAMB" },
+      project: { key: label === "ISA" ? "ISA" : "MB" },
       summary: data.summary || "Sem título",
       issuetype: { name: issueType },
       description: {

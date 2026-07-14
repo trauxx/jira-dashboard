@@ -13,7 +13,7 @@ interface Props {
 
 export default function JiraLoginForm({ onConnect }: Props) {
   const stored = getStoredConfig();
-  const [domain, setDomain] = useState(stored?.domain || 'isa-meubilhete.atlassian.net');
+  const [domain, setDomain] = useState(stored?.domain || 'traux.atlassian.net');
   const [email, setEmail] = useState(stored?.email || '');
   const [apiToken, setApiToken] = useState(stored?.apiToken || '');
   const [boardId, setBoardId] = useState(stored?.boardId || '1');

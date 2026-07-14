@@ -1,11 +1,11 @@
 {
   "/_not-found/page": "app/_not-found/page.js",
-  "/api/auth/session/route": "app/api/auth/session/route.js",
   "/api/auth/login/route": "app/api/auth/login/route.js",
+  "/api/auth/session/route": "app/api/auth/session/route.js",
+  "/api/jira/chat/route": "app/api/jira/chat/route.js",
   "/mb/page": "app/mb/page.js",
   "/isa/page": "app/isa/page.js",
-  "/api/jira/chat/route": "app/api/jira/chat/route.js",
+  "/api/jira/route": "app/api/jira/route.js",
   "/api/jira/issues/route": "app/api/jira/issues/route.js",
-  "/page": "app/page.js",
-  "/api/jira/route": "app/api/jira/route.js"
+  "/page": "app/page.js"
 }

@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 
-const DEFAULT_JIRA_DOMAIN = "isa-meubilhete.atlassian.net";
+const DEFAULT_JIRA_DOMAIN = "traux.atlassian.net";
 const DEFAULT_JIRA_EMAIL = "leonardocastro.consultor@gmail.com";
+const DEFAULT_JIRA_BOARD_ID = "1";
 
 function buildAuthHeader(email: string, apiToken: string) {
   const raw = `${email}:${apiToken}`;
