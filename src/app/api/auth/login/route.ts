@@ -23,6 +23,8 @@ export async function POST(req: Request) {
     const host = req.headers.get("host") || "";
     const { apiUrl, origin } = getApiConfig(host);
 
+    console.log("[login] host=%s apiUrl=%s origin=%s", host, apiUrl, origin);
+
     const res = await fetch(`${apiUrl}/auth/user`, {
       method: "POST",
       headers: {
@@ -44,7 +46,10 @@ export async function POST(req: Request) {
 
     if (!res.ok || !data?.status) {
       return NextResponse.json(
-        { error: data?.message || `Erro ao autenticar (${res.status})` },
+        {
+          error: data?.message || `Erro ao autenticar (${res.status})`,
+          _debug: { host, apiUrl, origin, apiStatus: res.status },
+        },
         { status: res.status === 200 ? 401 : res.status },
       );
     }

@@ -1,4 +1,4 @@
-// File: /private/var/folders/hh/67pqqp4n05171pt7npst324c0000gn/T/opencode/jira-dashboard/src/app/layout.tsx
+// File: /private/tmp/jira-dashboard/src/app/layout.tsx
 import * as entry from '../../../src/app/layout.js'
 import type { ResolvingMetadata, ResolvingViewport } from 'next/dist/lib/metadata/types/metadata-interface.js'
 
