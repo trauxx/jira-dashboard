@@ -110,7 +110,7 @@ export default function SprintBoard({ config, onLogout, company }: Props) {
   });
 
   const filteredColumns = useMemo(() => {
-    if (companyFilter === "all") return columns;
+    if (company || companyFilter === "all") return columns;
     const target = companyFilter.toUpperCase();
     return columns.map((col) => ({
       ...col,

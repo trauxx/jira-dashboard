@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { getApiConfig } from "@/lib/apiConfig";
 
 interface JiraConfigPayload {
   domain?: string;
@@ -8,11 +9,8 @@ interface JiraConfigPayload {
   sprintId?: number | string;
 }
 
-// Padrões do dashboard (usuário leonardocastro.consultor@gmail.com).
-// O token nunca é hardcoded — repo público; defina JIRA_API_TOKEN no ambiente (Vercel/.env.local).
 const DEFAULT_JIRA_DOMAIN = "traux.atlassian.net";
 const DEFAULT_JIRA_EMAIL = "leonardocastro.consultor@gmail.com";
-const DEFAULT_JIRA_BOARD_ID = "1";
 
 function buildAuthHeader(email: string, apiToken: string) {
   const raw = `${email}:${apiToken}`;
@@ -47,13 +45,14 @@ export async function POST(req: Request) {
     const body: JiraConfigPayload = await req.json();
     const { sprintId } = body;
 
-    // Prioridade: client > variável de ambiente > padrão hardcoded
+    // boardId e projectKey resolvidos pelo domínio (x-forwarded-host na Vercel)
+    const host = req.headers.get("x-forwarded-host") || req.headers.get("host") || "";
+    const { boardId, projectKey } = getApiConfig(host);
+
     const domain =
       body.domain || process.env.JIRA_DOMAIN || DEFAULT_JIRA_DOMAIN;
     const email = body.email || process.env.JIRA_EMAIL || DEFAULT_JIRA_EMAIL;
     const apiToken = body.apiToken || process.env.JIRA_API_TOKEN;
-    const boardId =
-      body.boardId || process.env.JIRA_BOARD_ID || DEFAULT_JIRA_BOARD_ID;
 
     if (!domain || !email || !apiToken || !boardId) {
       return NextResponse.json(
@@ -131,26 +130,7 @@ export async function POST(req: Request) {
       : null;
 
     if (!jql) {
-      const boardRes = await fetch(
-        `${baseUrl}/rest/agile/1.0/board/${boardId}`,
-        {
-          headers: {
-            Authorization: authHeader,
-            Accept: "application/json",
-          },
-          cache: "no-store",
-        },
-      );
-
-      if (boardRes.ok) {
-        const boardData = await boardRes.json();
-        const projectKey = boardData?.location?.projectKey;
-        jql = projectKey
-          ? `project=${projectKey} ORDER BY status`
-          : "ORDER BY status";
-      } else {
-        jql = "ORDER BY status";
-      }
+      jql = `project=${projectKey} ORDER BY status`;
     }
 
     const issuesRes = await fetch(`${baseUrl}/rest/api/3/search/jql`, {
