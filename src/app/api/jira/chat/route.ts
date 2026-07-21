@@ -35,6 +35,43 @@ function extractJSON(text: string): Record<string, string> | null {
   try { return JSON.parse(m ? m[1] : text); } catch { return null; }
 }
 
+const issueTypeCache = new Map<string, { types: { name: string; id: string }[]; fetchedAt: number }>();
+const CACHE_TTL = 300_000;
+
+async function getProjectIssueTypes(projectKey: string, auth: string, domain: string) {
+  const cached = issueTypeCache.get(projectKey);
+  if (cached && Date.now() - cached.fetchedAt < CACHE_TTL) return cached.types;
+
+  const res = await fetch(`https://${domain}/rest/api/3/issuetype/project?projectIdOrKey=${projectKey}`, {
+    headers: { Authorization: `Basic ${auth}` },
+  });
+  if (!res.ok) throw new Error(`Falha ao buscar issue types: ${res.status}`);
+  const types: { name: string; id: string; subtask: boolean }[] = await res.json();
+  const filtered = types.filter(t => !t.subtask).map(t => ({ name: t.name, id: t.id }));
+  issueTypeCache.set(projectKey, { types: filtered, fetchedAt: Date.now() });
+  return filtered;
+}
+
+function pickIssueType(tipo: string, availableTypes: { name: string; id: string }[]): string {
+  const PREFERRED: Record<string, string[]> = {
+    bug: ["Bug"],
+    melhoria: ["Story"],
+    feature: ["Task", "Story", "New Feature", "Improvement"],
+  };
+
+  const preferred = PREFERRED[tipo?.toLowerCase()] || ["Task", "Story"];
+  for (const name of preferred) {
+    const match = availableTypes.find(t => t.name.toLowerCase() === name.toLowerCase());
+    if (match) return match.name;
+  }
+  return availableTypes[0]?.name || "Task";
+}
+
+function fallbackIssueType(tipo: string): string {
+  return ["bug", "Bug"].includes(tipo || "") ? "Bug"
+    : ["melhoria", "Story"].includes(tipo || "") ? "Story" : "Task";
+}
+
 async function createJiraIssue(data: Record<string, string>, label: string) {
 const domain = process.env.JIRA_DOMAIN || "traux.atlassian.net";
 const email = process.env.JIRA_EMAIL || "leonardocastro.consultor@gmail.com";
@@ -43,9 +80,15 @@ const apiToken = process.env.JIRA_API_TOKEN;
   if (!apiToken) throw new Error("JIRA_API_TOKEN não configurado no servidor");
 
   const auth = Buffer.from(`${email}:${apiToken}`).toString("base64");
+  const projectKey = label === "ISA" ? "ISA" : "MB";
 
-  const issueType = ["bug", "Bug"].includes(data.tipo || "") ? "Bug"
-    : ["melhoria", "Story"].includes(data.tipo || "") ? "Story" : "Task";
+  let issueType: string;
+  try {
+    const availableTypes = await getProjectIssueTypes(projectKey, auth, domain);
+    issueType = pickIssueType(data.tipo || "", availableTypes);
+  } catch {
+    issueType = fallbackIssueType(data.tipo || "");
+  }
 
   const priorityName = data.prioridade === "Crítica" || data.prioridade === "Alta" ? "High"
     : data.prioridade === "Média" ? "Medium" : "Low";
@@ -66,7 +109,7 @@ const apiToken = process.env.JIRA_API_TOKEN;
 
   const payload = {
     fields: {
-      project: { key: label === "ISA" ? "ISA" : "MB" },
+      project: { key: projectKey },
       summary: data.summary || "Sem título",
       issuetype: { name: issueType },
       description: {
