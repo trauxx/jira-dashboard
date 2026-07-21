@@ -1,8 +1,5 @@
 import { NextResponse } from "next/server";
-
-const API_URL = process.env.TICKETS_API_URL || "https://api.acessofacil.com/v2";
-const COMPANY_ORIGIN =
-  process.env.TICKETS_COMPANY_ORIGIN || "https://meubilhete.com.br";
+import { getApiConfig } from "@/lib/apiConfig";
 
 interface LoginPayload {
   username?: string;
@@ -23,13 +20,15 @@ export async function POST(req: Request) {
       );
     }
 
-    const res = await fetch(`${API_URL}/auth/user`, {
+    const host = req.headers.get("host") || "";
+    const { apiUrl, origin } = getApiConfig(host);
+
+    const res = await fetch(`${apiUrl}/auth/user`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Accept: "application/json",
-        // CompanyMiddleware da tickets-apiv2 resolve a empresa pelo Origin
-        Origin: COMPANY_ORIGIN,
+        Origin: origin,
       },
       cache: "no-store",
       body: JSON.stringify({
