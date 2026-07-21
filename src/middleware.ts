@@ -6,7 +6,7 @@ const DOMAIN_MAP: Record<string, string> = {
 };
 
 export function middleware(req: NextRequest) {
-  const host = req.headers.get("host") || "";
+  const host = req.headers.get("x-forwarded-host") || req.headers.get("host") || "";
   const { pathname } = req.nextUrl;
 
   const domain = Object.keys(DOMAIN_MAP).find((d) => host.includes(d));

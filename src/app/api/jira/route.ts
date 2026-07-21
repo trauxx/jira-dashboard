@@ -47,7 +47,7 @@ export async function POST(req: Request) {
 
     // boardId e projectKey resolvidos pelo domínio (x-forwarded-host na Vercel)
     const host = req.headers.get("x-forwarded-host") || req.headers.get("host") || "";
-    const { boardId, projectKey } = getApiConfig(host);
+    const { boardId, projectKey, capacity } = getApiConfig(host);
 
     const domain =
       body.domain || process.env.JIRA_DOMAIN || DEFAULT_JIRA_DOMAIN;
@@ -199,6 +199,7 @@ export async function POST(req: Request) {
       selectedSprintId,
       sprints,
       issues,
+      capacity,
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Erro inesperado";

@@ -99,6 +99,7 @@ export function useJiraBoard() {
   const [sprintEndDate, setSprintEndDate] = useState<string | null>(null);
   const [sprints, setSprints] = useState<SprintInfo[]>([]);
   const [selectedSprintId, setSelectedSprintId] = useState<number | null>(null);
+  const [capacity, setCapacity] = useState<number>(0);
 
   const fetchBoard = useCallback(
     async (config: JiraConfig, sprintId?: number | null) => {
@@ -128,6 +129,7 @@ export function useJiraBoard() {
           issues: JiraIssue[];
           sprints?: SprintInfo[];
           selectedSprintId?: number | null;
+          capacity?: number;
         } = await res.json();
 
         setSprintName(data.sprintName || "Sem sprint ativa");
@@ -136,6 +138,7 @@ export function useJiraBoard() {
           : null;
         setSprintEndDate(data.sprintEndDate ?? null);
         setSprints(data.sprints || []);
+        setCapacity(typeof data.capacity === "number" ? data.capacity : 0);
         setSelectedSprintId(
           typeof data.selectedSprintId === "number"
             ? data.selectedSprintId
@@ -200,6 +203,7 @@ export function useJiraBoard() {
     sprintEndDate,
     sprints,
     selectedSprintId,
+    capacity,
     fetchBoard,
   };
 }

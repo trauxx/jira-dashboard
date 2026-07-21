@@ -22,13 +22,6 @@ import {
 import { Pie, PieChart, Cell } from "recharts";
 import computeSprintMetrics from "@/lib/sprintMetrics";
 
-// baseline capacities (MB default is 227 for sprints before sprint 9)
-const CAPACITY_BY_COMPANY = {
-  MB: 227,
-  ISA: 0,
-  SYSTEM: 0,
-} as const;
-
 interface Props {
   config: JiraConfig;
   onLogout: () => void;
@@ -44,6 +37,7 @@ export default function SprintBoard({ config, onLogout, company }: Props) {
     sprintEndDate,
     sprints,
     selectedSprintId,
+    capacity,
     fetchBoard,
   } = useJiraBoard();
   const [clock, setClock] = useState(new Date());
@@ -188,14 +182,13 @@ export default function SprintBoard({ config, onLogout, company }: Props) {
   const sprintNumber = parseSprintNumber(currentSprint);
   const isSprintAtLeast9 = sprintNumber !== null ? sprintNumber >= 9 : false;
 
+  // MB capacity doubles from sprint 9 onwards
+  const mbAdjustedCapacity =
+    company === "MB" && isSprintAtLeast9 && capacity === 227 ? 447 : capacity;
+
   const totalCapacityHours = useMemo(() => {
-    const mbCapacity = isSprintAtLeast9 ? 447 : CAPACITY_BY_COMPANY.MB;
-    const capacities = { MB: mbCapacity, ISA: CAPACITY_BY_COMPANY.ISA, SYSTEM: CAPACITY_BY_COMPANY.SYSTEM } as const;
-    if (companyFilter === "all") {
-      return capacities.MB + capacities.ISA + capacities.SYSTEM;
-    }
-    return capacities[companyFilter as keyof typeof capacities];
-  }, [companyFilter, isSprintAtLeast9]);
+    return mbAdjustedCapacity;
+  }, [mbAdjustedCapacity]);
 
   const {
     completedHours,
@@ -210,13 +203,13 @@ export default function SprintBoard({ config, onLogout, company }: Props) {
       0,
     );
 
-    const isExceeding = completedHours > totalCapacityHours;
+    const isExceeding = totalCapacityHours > 0 && completedHours > totalCapacityHours;
     const remainingHours = isExceeding
       ? 0
-      : totalCapacityHours - completedHours;
-    const capacityPercentage = Math.round(
-      (completedHours / totalCapacityHours) * 100,
-    );
+      : Math.max(0, totalCapacityHours - completedHours);
+    const capacityPercentage = totalCapacityHours > 0
+      ? Math.round((completedHours / totalCapacityHours) * 100)
+      : 0;
 
     return {
       completedHours,
