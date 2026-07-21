@@ -11,7 +11,7 @@ export async function GET(req: Request) {
   }
 
   try {
-    const host = req.headers.get("host") || "";
+    const host = req.headers.get("x-forwarded-host") || req.headers.get("host") || "";
     const { apiUrl, origin } = getApiConfig(host);
 
     const res = await fetch(`${apiUrl}/user/me`, {

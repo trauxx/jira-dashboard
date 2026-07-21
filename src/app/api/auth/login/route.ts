@@ -20,10 +20,13 @@ export async function POST(req: Request) {
       );
     }
 
-    const host = req.headers.get("host") || "";
+    const host = req.headers.get("x-forwarded-host") || req.headers.get("host") || "";
     const { apiUrl, origin } = getApiConfig(host);
 
-    console.log("[login] host=%s apiUrl=%s origin=%s", host, apiUrl, origin);
+    console.log("[login] x-forwarded-host=%s host=%s resolvedHost=%s apiUrl=%s origin=%s",
+      req.headers.get("x-forwarded-host") || "",
+      req.headers.get("host") || "",
+      host, apiUrl, origin);
 
     const res = await fetch(`${apiUrl}/auth/user`, {
       method: "POST",
