@@ -1,11 +1,15 @@
 const COMPANY_CONFIG: Record<string, { apiUrl: string; origin: string }> = {
   ingressosa: {
-    apiUrl: "https://api.ingressosa.acessofacil.com/v2",
-    origin: "https://ingressosa.com.br",
+    apiUrl:
+      process.env.TICKETS_API_URL_ISA ||
+      "https://api.ingressosa.acessofacil.com/v2",
+    origin:
+      process.env.TICKETS_COMPANY_ORIGIN_ISA || "https://ingressosa.com",
   },
   meubilhete: {
-    apiUrl: "https://api.acessofacil.com/v2",
-    origin: "https://meubilhete.com.br",
+    apiUrl: process.env.TICKETS_API_URL || "https://api.acessofacil.com/v2",
+    origin:
+      process.env.TICKETS_COMPANY_ORIGIN || "https://meubilhete.com.br",
   },
 };
 
