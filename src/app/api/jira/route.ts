@@ -40,6 +40,13 @@ function adfToText(node: any): string {
   return children;
 }
 
+// Status de cancelamento nunca devem gerar cards no dashboard.
+// Cobre variações PT/EN: "Cancelada", "Cancelado", "Cancelled", "Canceled", etc.
+function isCanceledStatus(statusName: unknown): boolean {
+  if (typeof statusName !== "string") return false;
+  return statusName.toLowerCase().includes("cancel");
+}
+
 export async function POST(req: Request) {
   try {
     const body: JiraConfigPayload = await req.json();
@@ -171,26 +178,28 @@ export async function POST(req: Request) {
     const issuesData = await issuesRes.json();
 
     const issues =
-      issuesData.issues?.map((issue: any) => ({
-        id: issue.id,
-        key: issue.key,
-        summary: issue.fields.summary,
-        status: issue.fields.status.name,
-        created: issue.fields.created,
-        assignee: issue.fields.assignee?.displayName,
-        avatarUrl: issue.fields.assignee?.avatarUrls?.["24x24"],
-        priority: issue.fields.priority?.name,
-        issueType: issue.fields.issuetype?.name,
-        browseUrl: `${baseUrl}/browse/${issue.key}`,
-        labels: issue.fields.labels ?? [],
-        description: issue.fields.description
-          ? adfToText(issue.fields.description).trim()
-          : "",
-        storyPoints:
-          issue.fields.customfield_10016 ?? // padrão cloud
-          issue.fields.customfield_10026 ?? // alternativo comum
-          null,
-      })) ?? [];
+      issuesData.issues
+        ?.map((issue: any) => ({
+          id: issue.id,
+          key: issue.key,
+          summary: issue.fields.summary,
+          status: issue.fields.status.name,
+          created: issue.fields.created,
+          assignee: issue.fields.assignee?.displayName,
+          avatarUrl: issue.fields.assignee?.avatarUrls?.["24x24"],
+          priority: issue.fields.priority?.name,
+          issueType: issue.fields.issuetype?.name,
+          browseUrl: `${baseUrl}/browse/${issue.key}`,
+          labels: issue.fields.labels ?? [],
+          description: issue.fields.description
+            ? adfToText(issue.fields.description).trim()
+            : "",
+          storyPoints:
+            issue.fields.customfield_10016 ?? // padrão cloud
+            issue.fields.customfield_10026 ?? // alternativo comum
+            null,
+        }))
+        .filter((issue: any) => !isCanceledStatus(issue.status)) ?? [];
 
     return NextResponse.json({
       sprintName,

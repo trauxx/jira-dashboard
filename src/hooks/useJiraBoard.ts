@@ -31,6 +31,13 @@ export function clearConfig() {
   localStorage.removeItem(STORAGE_KEY);
 }
 
+// Status de cancelamento nunca geram cards no dashboard.
+// Defesa em profundidade (a API já filtra): cobre "Cancelada",
+// "Cancelado", "Cancelled", "Canceled", etc.
+function isCanceledStatus(statusName: string): boolean {
+  return statusName.toLowerCase().includes("cancel");
+}
+
 // Map Jira status names to our columns
 function mapStatusToColumn(statusName: string): string {
   const lower = statusName.toLowerCase();
@@ -155,6 +162,8 @@ export function useJiraBoard() {
         ];
 
         issues.forEach((issue) => {
+          if (isCanceledStatus(issue.status)) return;
+
           const normalizedStatus = mapStatusToColumn(
             issue.status,
           ) as ColumnStatus;
