@@ -196,6 +196,29 @@ function fallbackIssueType(tipo: string): IssueType {
   return normalize(tipo) === "bug" ? { name: "Bug" } : { name: "Tarefa" };
 }
 
+function inlineNodes(line: string): any[] {
+  const nodes: any[] = [];
+  const regex = /\*\*(.+?)\*\*/g;
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+
+  while ((match = regex.exec(line)) !== null) {
+    if (match.index > lastIndex) {
+      nodes.push({ type: "text", text: line.slice(lastIndex, match.index) });
+    }
+    if (match[1]) {
+      nodes.push({ type: "text", text: match[1], marks: [{ type: "strong" }] });
+    }
+    lastIndex = regex.lastIndex;
+  }
+
+  if (lastIndex < line.length) {
+    nodes.push({ type: "text", text: line.slice(lastIndex) });
+  }
+
+  return nodes.filter((node) => node.text.length > 0);
+}
+
 function textToAdf(text: string) {
   const content: any[] = [];
   let buffer: string[] = [];
@@ -205,7 +228,7 @@ function textToAdf(text: string) {
     const inline: any[] = [];
     buffer.forEach((line, i) => {
       if (i > 0) inline.push({ type: "hardBreak" });
-      if (line.length) inline.push({ type: "text", text: line });
+      inline.push(...inlineNodes(line));
     });
     if (inline.length) content.push({ type: "paragraph", content: inline });
     buffer = [];
@@ -246,7 +269,7 @@ function textToAdf(text: string) {
 }
 
 async function createJiraIssue(data: Record<string, string>, projectKey: string) {
-  const domain = process.env.JIRA_DOMAIN || "traux.atlassian.net";
+  const domain = (process.env.JIRA_DOMAIN || "traux.atlassian.net").replace(/\/+$/, "");
   const email = process.env.JIRA_EMAIL || "leonardocastro.consultor@gmail.com";
   const apiToken = process.env.JIRA_API_TOKEN;
 
